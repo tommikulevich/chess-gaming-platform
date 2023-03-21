@@ -103,9 +103,12 @@ class Piece(QGraphicsPixmapItem):
         super().mouseMoveEvent(event)
         if event.buttons() & Qt.LeftButton:
             newPos = self.pos()
-            gridPos = QPointF(round(newPos.x() / self.pieceSize) * self.pieceSize,
-                              round(newPos.y() / self.pieceSize) * self.pieceSize)
-            self.setPos(gridPos)
+            if 0 < newPos.x() < 7 * self.pieceSize and 0 < newPos.y() < 7 * self.pieceSize:
+                gridPos = QPointF(round(newPos.x() / self.pieceSize) * self.pieceSize,
+                                  round(newPos.y() / self.pieceSize) * self.pieceSize)
+                self.setPos(gridPos)
+            else:
+                self.setPos(self.startPos)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:

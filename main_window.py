@@ -1,8 +1,9 @@
 from PyQt5 import uic
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow, QGraphicsView
+from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QTextBrowser, QPlainTextEdit, QTextEdit, QLineEdit
 from PyQt5.QtCore import Qt
 from chess_board import ChessBoard
+from text_game import TextGame
 
 
 class MainWindow(QMainWindow):
@@ -17,6 +18,8 @@ class MainWindow(QMainWindow):
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
+
+        self.textGame = TextGame(self.findChild(QTextEdit, 'textEdit'), self.findChild(QLineEdit, 'lineEdit'))
 
         self.show()
 
