@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt, QPointF
 from PyQt5.QtWidgets import QGraphicsPixmapItem, QMenu, QAction, QMessageBox, QStyle, QApplication
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtGui import QPixmap, QIcon, QTransform
 
 from board_tile import BoardTile
 from data import resources_rc
@@ -124,7 +124,7 @@ class Piece(QGraphicsPixmapItem):
 
         self.startPos = self.pos()
         startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
-        self.validMoves = self.chessboard.getPossibleMoves(self.pieceName, startX, startY)
+        self.validMoves = self.chessboard.getLegalMoves(self.pieceName, startX, startY)
         self.changeTileTexture(True)
 
         super().mousePressEvent(event)
@@ -132,18 +132,16 @@ class Piece(QGraphicsPixmapItem):
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
 
-        newPos = self.pos()
-
-        if 0 < newPos.x() < 7 * self.pieceSize and 0 < newPos.y() < 7 * self.pieceSize:
-            gridPos = self.gridToXY(*self.xyToGrid(newPos.x(), newPos.y()))
-            self.setPos(gridPos)
-        else:
-            self.setPos(self.startPos)
-
     def mouseReleaseEvent(self, event):
         self.setCursor(Qt.OpenHandCursor)
 
         newPos = self.pos()
+
+        if 0 < newPos.x() < 7 * self.pieceSize and 0 < newPos.y() < 7 * self.pieceSize:
+            pass
+        else:
+            self.setPos(self.startPos)
+
         endX, endY = self.xyToGrid(newPos.x(), newPos.y())
         startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
 
@@ -151,6 +149,10 @@ class Piece(QGraphicsPixmapItem):
             startBit = self.chessboard.xyToBit(startX, startY)
             endBit = self.chessboard.xyToBit(endX, endY)
             self.chessboard.movePiece(self.pieceName, startBit, endBit)
+
+            targetItem = [item for item in self.scene().items(self.gridToXY(endX, endY), self.pieceSize, self.pieceSize) if (isinstance(item, Piece) and item is not self)]
+            if targetItem:
+                self.scene().removeItem(targetItem[0])
 
             self.setPos(self.gridToXY(endX, endY))
             self.chessboard.printBoard()

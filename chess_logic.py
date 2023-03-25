@@ -1,3 +1,8 @@
+import itertools
+
+import numpy as np
+
+
 class ChessLogic:
     def __init__(self):
         self.pieces = {
@@ -30,24 +35,14 @@ class ChessLogic:
 
         return self.getPiece(pos)
 
-    def getPiecesByColor(self, isWhite):
-        pieces = 0
-
-        for piece, pos in self.pieces.items():
-            if piece.isupper() == isWhite:
-                pieces |= pos
-
-        return pieces
-
     def getAllPieces(self):
-        pieces = 0
-
-        for pos in self.pieces.values():
-            pieces |= pos
-
-        return pieces
+        return sum(self.pieces.values())
 
     def movePiece(self, piece, oldPos, newPos):
+        targetPiece = self.getPiece(newPos)
+        if targetPiece:
+            self.removePiece(targetPiece, newPos)
+
         self.removePiece(piece, oldPos)
         self.setPiece(piece, newPos)
 
@@ -59,17 +54,27 @@ class ChessLogic:
     def getPossibleMoves(self, piece, x, y):
         if piece.lower() == 'p':
             return self.getPawnMoves(piece, x, y)
-        # elif piece.lower() == 'r':
-        #     return self.get_rook_moves(piece)
-        # ...
+        elif piece.lower() == 'r':
+            return self.getRookMoves(piece, x, y)
+        elif piece.lower() == 'n':
+            return self.getKnightMoves(piece, x, y)
+        elif piece.lower() == 'b':
+            return self.getBishopMoves(piece, x, y)
+        elif piece.lower() == 'q':
+            return self.getQueenMoves(piece, x, y)
+        elif piece.lower() == 'k':
+            return self.getKingMoves(piece, x, y)
 
-        return 0
+        return []
 
     def getPawnMoves(self, piece, x, y):
         moves = []
 
         moveDir = 1 if piece.islower() else -1
         enPassantRank = 5 if piece.islower() else 2
+
+        if (piece.islower() and y == 7) or (piece.isupper() and y == 0):
+            return moves
 
         # Checking moves one square forward
         move = self.xyToBit(x, y + moveDir)
@@ -95,6 +100,149 @@ class ChessLogic:
                     pass
 
         return moves
+
+    def getRookMoves(self, piece, x, y):
+        moves = []
+        rookShifts = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+        for dx, dy in rookShifts:
+            newX, newY = x + dx, y + dy
+
+            while 0 <= newX < 8 and 0 <= newY < 8:
+                target = self.xyToBit(newX, newY)
+                targetPiece = self.getPiece(target)
+
+                if targetPiece is None:
+                    moves.append([newX, newY])
+                else:
+                    if targetPiece.isupper() != piece.isupper():
+                        moves.append([newX, newY])
+                    break
+
+                newX += dx
+                newY += dy
+
+        return moves
+
+    def getKnightMoves(self, piece, x, y):
+        moves = []
+        knightShifts = [(1, 2), (2, 1), (-1, 2), (-2, 1), (1, -2), (2, -1), (-1, -2), (-2, -1)]
+
+        for dx, dy in knightShifts:
+            newX, newY = x + dx, y + dy
+
+            if 0 <= newX < 8 and 0 <= newY < 8:
+                target = self.xyToBit(newX, newY)
+                targetPiece = self.getPiece(target)
+
+                if targetPiece is None or targetPiece.isupper() != piece.isupper():
+                    moves.append([newX, newY])
+
+        return moves
+
+    def getBishopMoves(self, piece, x, y):
+        moves = []
+        bishopShifts = [(1, 1), (-1, 1), (1, -1), (-1, -1)]
+
+        for dx, dy in bishopShifts:
+            newX, newY = x + dx, y + dy
+
+            while 0 <= newX < 8 and 0 <= newY < 8:
+                target = self.xyToBit(newX, newY)
+                targetPiece = self.getPiece(target)
+
+                if targetPiece is None:
+                    moves.append([newX, newY])
+                else:
+                    if targetPiece.isupper() != piece.isupper():
+                        moves.append([newX, newY])
+                    break
+
+                newX += dx
+                newY += dy
+
+        return moves
+
+    def getQueenMoves(self, piece, x, y):
+        bishopMoves = self.getBishopMoves(piece, x, y)
+        rookMoves = self.getRookMoves(piece, x, y)
+
+        return bishopMoves + rookMoves
+
+    def getKingMoves(self, piece, x, y):
+        moves = []
+        kingShifts = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+        for dx, dy in kingShifts:
+            newX, newY = x + dx, y + dy
+
+            if 0 <= newX < 8 and 0 <= newY < 8:
+                target = self.xyToBit(newX, newY)
+                targetPiece = self.getPiece(target)
+
+                if targetPiece is None or targetPiece.isupper() != piece.isupper():
+                    moves.append([newX, newY])
+
+        return moves
+
+    # ----------------------------------------------------------
+
+    def getKingPos(self, isWhite):
+        x, y = self.bitToXY(self.pieces['K' if isWhite else 'k'])
+
+        return x, y
+
+    def isSquareAttacked(self, x, y, isWhite):
+        for piece, bitboard in self.pieces.items():
+            if piece.isupper() != isWhite:
+                for attackX, attackY in itertools.product(range(8), range(8)):
+                    if bitboard & self.xyToBit(attackX, attackY):
+                        moves = self.getPossibleMoves(piece, attackX, attackY)
+                        if [x, y] in moves:
+                            return True
+        return False
+
+    def isCheck(self, isWhite):
+        kingX, kingY = self.getKingPos(isWhite)
+
+        return self.isSquareAttacked(kingX, kingY, isWhite)
+
+    def isCheckmate(self, isWhite):
+        if not self.isCheck(isWhite):
+            return False
+
+        for piece, bitboard in self.pieces.items():
+            if piece.isupper() == isWhite:
+                for x, y in itertools.product(range(8), range(8)):
+                    if bitboard & self.xyToBit(x, y):
+                        legalMoves = self.getLegalMoves(piece, x, y)
+                        if legalMoves:
+                            return False
+
+        return True
+
+    def getLegalMoves(self, piece, x, y):
+        possibleMoves = self.getPossibleMoves(piece, x, y)
+        legalMoves = []
+
+        for move in possibleMoves:
+            newX, newY = move
+            oldPos = self.xyToBit(x, y)
+            newPos = self.xyToBit(newX, newY)
+            targetPiece = self.getPiece(newPos)
+
+            self.movePiece(piece, oldPos, newPos)
+            if targetPiece:
+                self.removePiece(targetPiece, newPos)
+
+            if not self.isCheck(piece.isupper()):
+                legalMoves.append(move)
+
+            self.movePiece(piece, newPos, oldPos)
+            if targetPiece:
+                self.setPiece(targetPiece, newPos)
+
+        return legalMoves
 
     # ----------------------------------------------------------
 
