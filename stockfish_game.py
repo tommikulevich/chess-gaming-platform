@@ -5,7 +5,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QApplication, QStyle
 
 
-class TextGame:
+class StockfishGame:
     def __init__(self, outputWidget, inputWidget):
         self.inputWidget = inputWidget
         self.outputWidget = outputWidget
@@ -14,8 +14,8 @@ class TextGame:
         self.engine = chess.engine.SimpleEngine.popen_uci("stockfish/stockfish-windows-2022-x86-64-avx2.exe")
 
         self.outputWidget.setReadOnly(True)
-        self.updateOutput()
         self.inputWidget.returnPressed.connect(self.movePiece)
+        self.updateOutput()
 
     def movePiece(self):
         mistake = False
@@ -28,17 +28,16 @@ class TextGame:
                 self.updateOutput()
             else:
                 mistake = True
-                mistakeMsg = "Invalid move!"
+                mistake_msg = "Invalid move!"
         except ValueError:
             mistake = True
-            mistakeMsg = "Invalid format!"
-            # self.outputWidget.append("Invalid format!")
+            mistake_msg = "Invalid format!"
 
         if mistake:
             msg = QMessageBox()
             msg.setWindowIcon(QIcon(QApplication.instance().style().standardPixmap(QStyle.SP_MessageBoxWarning)))
             msg.setIcon(QMessageBox.Warning)
-            msg.setText(mistakeMsg)
+            msg.setText(mistake_msg)
             msg.setWindowTitle("Mistake")
             msg.exec_()
 

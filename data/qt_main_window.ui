@@ -98,7 +98,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      </font>
     </property>
     <property name="text">
-     <string>Text Stockfish</string>
+     <string>Text Field</string>
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
