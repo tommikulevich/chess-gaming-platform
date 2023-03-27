@@ -20,76 +20,45 @@
    <string>Chess Game</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../Arch/resources/resources.qrc">
+   <iconset>
     <normaloff>:/pieces/yellow/king</normaloff>:/pieces/yellow/king</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QGraphicsView" name="graphicsView">
+   <widget class="QGraphicsView" name="board">
     <property name="geometry">
      <rect>
-      <x>260</x>
+      <x>10</x>
       <y>10</y>
       <width>800</width>
       <height>800</height>
      </rect>
     </property>
    </widget>
-   <widget class="QLineEdit" name="lineEdit2">
+   <widget class="QGraphicsView" name="clock1">
     <property name="geometry">
      <rect>
-      <x>1070</x>
-      <y>520</y>
-      <width>241</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Arial Narrow</family>
-      <pointsize>12</pointsize>
-      <italic>false</italic>
-      <bold>true</bold>
-      <underline>false</underline>
-     </font>
-    </property>
-    <property name="inputMask">
-     <string/>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-    <property name="placeholderText">
-     <string>Input | Player №2</string>
-    </property>
-   </widget>
-   <widget class="QGraphicsView" name="graphicsView1">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>270</y>
+      <x>820</x>
+      <y>10</y>
       <width>241</width>
       <height>241</height>
      </rect>
     </property>
    </widget>
-   <widget class="QGraphicsView" name="graphicsView2">
+   <widget class="QGraphicsView" name="clock2">
     <property name="geometry">
      <rect>
       <x>1070</x>
-      <y>270</y>
+      <y>10</y>
       <width>241</width>
       <height>241</height>
      </rect>
     </property>
    </widget>
-   <widget class="QLineEdit" name="lineEdit1">
+   <widget class="QLineEdit" name="input">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>520</y>
+      <x>940</x>
+      <y>680</y>
       <width>241</width>
       <height>61</height>
      </rect>
@@ -114,6 +83,70 @@
     </property>
     <property name="placeholderText">
      <string>Input | Player №1</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label1">
+    <property name="geometry">
+     <rect>
+      <x>820</x>
+      <y>260</y>
+      <width>241</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Gadugi</family>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Player №1</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label2">
+    <property name="geometry">
+     <rect>
+      <x>1070</x>
+      <y>260</y>
+      <width>241</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Gadugi</family>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Player №2</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QTextEdit" name="outputBoard">
+    <property name="geometry">
+     <rect>
+      <x>890</x>
+      <y>340</y>
+      <width>341</width>
+      <height>331</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Courier New</family>
+      <pointsize>10</pointsize>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>

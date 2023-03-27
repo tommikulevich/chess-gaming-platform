@@ -7,14 +7,13 @@ from board_tile import BoardTile
 
 
 class Piece(QGraphicsPixmapItem):
-    def __init__(self, pieceName, side, x, y, pieceSize, chessboard, parent=None):
+    def __init__(self, pieceName, side, x, y, pieceSize, parent=None):
         super().__init__(parent)
 
         # For Game Logic
         self.side = side
         self.pieceName = pieceName
 
-        self.chessboard = chessboard
         self.validMoves = []
         self.isCheckL = False
         self.isCheckD = False
@@ -79,14 +78,14 @@ class Piece(QGraphicsPixmapItem):
 
     def changeCheckKingTexture(self):
         if self.isCheckL:
-            kingPosX, kingPosY = self.chessboard.getKingPos(True)
+            kingPosX, kingPosY = self.scene().chessboard.getKingPos(True)
             kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
 
             kingTile.showCheck = True
             kingTile.loadTexture()
             kingTile.update()
         else:
-            kingPosX, kingPosY = self.chessboard.getKingPos(True)
+            kingPosX, kingPosY = self.scene().chessboard.getKingPos(True)
             kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
 
             kingTile.showCheck = False
@@ -94,14 +93,14 @@ class Piece(QGraphicsPixmapItem):
             kingTile.update()
 
         if self.isCheckD:
-            kingPosX, kingPosY = self.chessboard.getKingPos(False)
+            kingPosX, kingPosY = self.scene().chessboard.getKingPos(False)
             kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
 
             kingTile.showCheck = True
             kingTile.loadTexture()
             kingTile.update()
         else:
-            kingPosX, kingPosY = self.chessboard.getKingPos(False)
+            kingPosX, kingPosY = self.scene().chessboard.getKingPos(False)
             kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
 
             kingTile.showCheck = False
@@ -155,7 +154,7 @@ class Piece(QGraphicsPixmapItem):
         startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
 
         if [endX, endY] in self.validMoves:
-            self.chessboard.movePiece(startX, startY, endX, endY)
+            self.scene().chessboard.movePiece(startX, startY, endX, endY)
 
             targetItem = [item for item in self.scene().items(self.gridToXY(endX, endY), self.pieceSize, self.pieceSize)
                           if (isinstance(item, Piece) and item is not self)]
@@ -163,34 +162,41 @@ class Piece(QGraphicsPixmapItem):
                 self.scene().removeItem(targetItem[0])
 
             self.setPos(self.gridToXY(endX, endY))
-            self.chessboard.printBoard()
+            self.scene().chessboard.playerMoved = True
+            self.scene().printTextBoard()
+
+            self.isCheckL = self.scene().chessboard.isInCheck(True)
+            self.isCheckD = self.scene().chessboard.isInCheck(False)
         else:
             self.setPos(self.startPos)
-
-        self.isCheckL = self.chessboard.isInCheck(True)
-        self.isCheckD = self.chessboard.isInCheck(False)
 
         self.changeValidTileTexture(False)
         self.changeCheckKingTexture()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.setCursor(Qt.ClosedHandCursor)
+            if self.scene().chessboard.activePlayer == self.side:
+                if not self.scene().chessboard.playerMoved:
+                    self.setCursor(Qt.ClosedHandCursor)
 
-            self.startPos = self.pos()
-            startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
-            self.validMoves = self.chessboard.getLegalMoves(startX, startY)
+                    self.startPos = self.pos()
+                    startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
+                    self.validMoves = self.scene().chessboard.getLegalMoves(startX, startY)
 
-            self.changeValidTileTexture(True)
+                    self.changeValidTileTexture(True)
 
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        super().mouseMoveEvent(event)
+        if self.scene().chessboard.activePlayer == self.side:
+            if not self.scene().chessboard.playerMoved:
+                super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self.setCursor(Qt.OpenHandCursor)
-            self.playerMove()
+            if self.scene().chessboard.activePlayer == self.side:
+                if not self.scene().chessboard.playerMoved:
+                    self.setCursor(Qt.OpenHandCursor)
+                    self.playerMove()
 
         super().mouseReleaseEvent(event)

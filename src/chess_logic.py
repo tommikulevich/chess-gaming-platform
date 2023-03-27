@@ -4,7 +4,7 @@ import itertools
 
 class ChessLogic:
     def __init__(self):
-        self.board = np.array([
+        self.textBoard = np.array([
             ["r", "n", "b", "q", "k", "b", "n", "r"],
             ["p", "p", "p", "p", "p", "p", "p", "p"],
             [".", ".", ".", ".", ".", ".", ".", "."],
@@ -15,17 +15,20 @@ class ChessLogic:
             ["R", "N", "B", "Q", "K", "B", "N", "R"]
         ])
 
-    def printBoard(self):
-        print("  A B C D E F G H")
-        for i, row in enumerate(self.board):
-            print(8 - i, end=" ")
-            print(' '.join(row))
+        self.activePlayer = "light"
+        self.playerMoved = False
+
+    def switchActivePlayer(self):
+        if self.activePlayer == "light":
+            self.activePlayer = "dark"
+        else:
+            self.activePlayer = "light"
 
     def getPiece(self, x, y):
-        return self.board[y, x]
+        return self.textBoard[y, x]
 
     def setPiece(self, x, y, piece):
-        self.board[y, x] = piece
+        self.textBoard[y, x] = piece
 
     def movePiece(self, oldX, oldY, newX, newY):
         piece = self.getPiece(oldX, oldY)
@@ -169,7 +172,7 @@ class ChessLogic:
 
     def getKingPos(self, isLight):
         piece = 'K' if isLight else 'k'
-        pos = np.where(np.array(self.board) == piece)
+        pos = np.where(np.array(self.textBoard) == piece)
 
         return pos[1][0], pos[0][0]
 
@@ -225,5 +228,3 @@ class ChessLogic:
                 self.setPiece(newX, newY, targetPiece)
 
         return legalMoves
-
-    # ----------------------------------------------------------
