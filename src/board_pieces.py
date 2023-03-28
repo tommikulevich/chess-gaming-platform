@@ -1,5 +1,6 @@
 from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtWidgets import QGraphicsPixmapItem, QMenu, QAction, QMessageBox, QStyle, QApplication
+from PyQt5.QtWidgets import QGraphicsPixmapItem, QMenu, QAction, QMessageBox, QStyle, QApplication, QGridLayout, \
+    QDialog, QLabel, QPushButton
 from PyQt5.QtGui import QPixmap, QIcon
 
 from data import resources_rc
@@ -15,8 +16,7 @@ class Piece(QGraphicsPixmapItem):
         self.pieceName = pieceName
 
         self.validMoves = []
-        self.isCheckL = False
-        self.isCheckD = False
+        self.isCheckLocal = False
 
         # For GUI
         self.setCursor(Qt.OpenHandCursor)
@@ -27,7 +27,8 @@ class Piece(QGraphicsPixmapItem):
         self.startPos = self.gridToXY(x, y)
         self.setPos(self.startPos)
 
-        self.pieceStyle = f":/pieces/{self.side}/{self.pieceName.lower()}"
+        self.pieceTheme = self.side
+        self.pieceStyle = f":/pieces/{self.pieceTheme}/{self.pieceName.lower()}"
         self.pieceLightSideStyle = f":/pieces/light/{self.pieceName.lower()}"
         self.pieceDarkSideStyle = f":/pieces/dark/{self.pieceName.lower()}"
         self.loadTexture()
@@ -37,26 +38,27 @@ class Piece(QGraphicsPixmapItem):
         self.setPixmap(piecePixmap.scaled(self.pieceSize, self.pieceSize, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def changePieceTexture(self, pieceStyle, side):
+        self.pieceTheme = pieceStyle
+
         pieceItems = [item for item in self.scene().items() if isinstance(item, Piece)]
         for item in pieceItems:
-            newStyle = f":/pieces/{pieceStyle}/{self.pieceName}"
-
+            newStyle = f":/pieces/{self.pieceTheme}/{self.pieceName.lower()}"
             if (side == "light" and newStyle == item.pieceDarkSideStyle) or \
-               (side == "dark" and newStyle == item.pieceLightSideStyle):
+                    (side == "dark" and newStyle == item.pieceLightSideStyle):
                 msg = QMessageBox()
                 msg.setWindowIcon(QIcon(QApplication.instance().style().standardPixmap(QStyle.SP_MessageBoxWarning)))
                 msg.setIcon(QMessageBox.Warning)
-                msg.setText("You can't choose this style because someone have it!")
+                msg.setText("You can't choose this style because another side have it!")
                 msg.setWindowTitle("Warning")
                 msg.exec_()
 
                 break
 
             if side == item.side:
-                if pieceStyle == self.side:
+                if self.pieceTheme == self.side:
                     item.pieceStyle = f":/pieces/{item.side}/{item.pieceName.lower()}"
                 else:
-                    item.pieceStyle = f":/pieces/{pieceStyle}/{item.pieceName.lower()}"
+                    item.pieceStyle = f":/pieces/{self.pieceTheme}/{item.pieceName.lower()}"
 
                 item.loadTexture()
                 item.update()
@@ -76,33 +78,17 @@ class Piece(QGraphicsPixmapItem):
                 item.loadTexture()
                 item.update()
 
-    def changeCheckKingTexture(self):
-        if self.isCheckL:
-            kingPosX, kingPosY = self.scene().chessboard.getKingPos(True)
+    def changeCheckKingTexture(self, startX, startY, kingPosX, kingPosY, isCheck):
+        if self.pieceName.lower() == 'k':
+            kingTile = self.scene().itemAt(self.gridToXY(startX, startY), self.transform())
+        else:
             kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
 
+        if isCheck:
             kingTile.showCheck = True
             kingTile.loadTexture()
             kingTile.update()
         else:
-            kingPosX, kingPosY = self.scene().chessboard.getKingPos(True)
-            kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
-
-            kingTile.showCheck = False
-            kingTile.loadTexture()
-            kingTile.update()
-
-        if self.isCheckD:
-            kingPosX, kingPosY = self.scene().chessboard.getKingPos(False)
-            kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
-
-            kingTile.showCheck = True
-            kingTile.loadTexture()
-            kingTile.update()
-        else:
-            kingPosX, kingPosY = self.scene().chessboard.getKingPos(False)
-            kingTile = self.scene().itemAt(self.gridToXY(kingPosX, kingPosY), self.transform())
-
             kingTile.showCheck = False
             kingTile.loadTexture()
             kingTile.update()
@@ -144,34 +130,84 @@ class Piece(QGraphicsPixmapItem):
 
         menu.exec_(event.screenPos())
 
+    def showPromotionDialog(self):
+        pieces = {'q': 'Queen', 'r': 'Rook', 'n': 'Knight', 'b': 'Bishop'}
+
+        promotionDialog = QDialog(self.scene().views()[0])
+        promotionDialog.setWindowTitle("Promote Pawn")
+        layout = QGridLayout()
+
+        for index, (piece, name) in enumerate(pieces.items()):
+            pieceStyle = f":/pieces/{self.side}/{piece.lower()}"
+
+            icon = QPixmap(pieceStyle)
+            icon = icon.scaled(self.pieceSize, self.pieceSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+            pieceLabel = QLabel()
+            pieceLabel.setPixmap(icon)
+
+            button = QPushButton(name)
+            button.clicked.connect(lambda checked, p=piece, s=pieceStyle: (
+                self.promotePiece(p, s), promotionDialog.accept()))
+
+            layout.addWidget(pieceLabel, index, 0)
+            layout.addWidget(button, index, 1)
+
+        promotionDialog.setLayout(layout)
+        promotionDialog.exec_()
+
+    def promotePiece(self, newPieceName, newPieceStyle):
+        self.pieceName = newPieceName
+        self.pieceStyle = newPieceStyle
+        self.loadTexture()
+        self.update()
+
+        x, y = self.xyToGrid(self.x(), self.y())
+        self.scene().chessboard.promotePawn(x, y, newPieceName)
+
     def playerMove(self):
         newPos = self.pos()
-
-        if not (0 < newPos.x() < 7 * self.pieceSize and 0 < newPos.y() < 7 * self.pieceSize):
-            self.setPos(self.startPos)
-
         endX, endY = self.xyToGrid(newPos.x(), newPos.y())
         startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
 
         if [endX, endY] in self.validMoves:
             self.scene().chessboard.movePiece(startX, startY, endX, endY)
 
-            targetItem = [item for item in self.scene().items(self.gridToXY(endX, endY), self.pieceSize, self.pieceSize)
-                          if (isinstance(item, Piece) and item is not self)]
+            if self.scene().chessboard.isPromotion(endX, endY):
+                self.showPromotionDialog()
+
+            castlingPerformed = self.scene().chessboard.isCastling()
+            if castlingPerformed[0]:
+                rookOldX, rookNewX = castlingPerformed[1]
+                rookItem = [item for item in
+                            self.scene().items(self.gridToXY(rookOldX, endY), self.pieceSize, self.pieceSize)
+                            if (isinstance(item, Piece) and item is not self)]
+                rookItem[0].setPos(self.gridToXY(rookNewX, endY))
+
+            enPassantPerformed = self.scene().chessboard.isEnPassant()
+            if enPassantPerformed[0]:
+                x, y = enPassantPerformed[1]
+                targetItem = [item for item in self.scene().items(self.gridToXY(x, y), self.pieceSize, self.pieceSize)
+                              if (isinstance(item, Piece) and item is not self)]
+            else:
+                targetItem = [item for item in
+                              self.scene().items(self.gridToXY(endX, endY), self.pieceSize, self.pieceSize)
+                              if (isinstance(item, Piece) and item is not self)]
+
             if targetItem:
                 self.scene().removeItem(targetItem[0])
 
             self.setPos(self.gridToXY(endX, endY))
+
             self.scene().chessboard.playerMoved = True
             self.scene().printTextBoard()
 
-            self.isCheckL = self.scene().chessboard.isInCheck(True)
-            self.isCheckD = self.scene().chessboard.isInCheck(False)
+            self.changeCheckKingTexture(startX, startY, *self.scene().chessboard.isCheck("light"))
+            self.changeCheckKingTexture(startX, startY, *self.scene().chessboard.isCheck("dark"))
         else:
             self.setPos(self.startPos)
 
         self.changeValidTileTexture(False)
-        self.changeCheckKingTexture()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

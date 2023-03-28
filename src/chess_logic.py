@@ -18,6 +18,16 @@ class ChessLogic:
         self.activePlayer = "light"
         self.playerMoved = False
 
+        self.check = False
+
+        self.enPassantTarget = None
+        self.enPassantPerformed = False
+
+        self.castlingRookPos = None
+        self.castlingPerformed = False
+        self.castling = {'light': {'kingMoved': False, 'leftRookMoved': False, 'rightRookMoved': False},
+                         'dark':  {'kingMoved': False, 'leftRookMoved': False, 'rightRookMoved': False}}
+
     def switchActivePlayer(self):
         if self.activePlayer == "light":
             self.activePlayer = "dark"
@@ -30,11 +40,55 @@ class ChessLogic:
     def setPiece(self, x, y, piece):
         self.textBoard[y, x] = piece
 
-    def movePiece(self, oldX, oldY, newX, newY):
+    def testMovePiece(self, oldX, oldY, newX, newY):
         piece = self.getPiece(oldX, oldY)
 
         self.setPiece(newX, newY, piece)
         self.setPiece(oldX, oldY, '.')
+
+    def movePiece(self, oldX, oldY, newX, newY):
+        piece = self.getPiece(oldX, oldY)
+
+        if [newX, newY] != [oldX, oldY]:
+            if piece.lower() == 'k' and [newX, newY] in self.getCastlingMoves(oldX, oldY):
+                rookOldX, rookNewX = 7 if newX - oldX > 0 else 0, (newX + oldX) // 2
+                rookPiece = self.getPiece(rookOldX, oldY)
+                self.castlingRookPos = (rookOldX, rookNewX)
+                self.castlingPerformed = True
+
+                self.setPiece(rookNewX, oldY, rookPiece)
+                self.setPiece(rookOldX, oldY, '.')
+
+                if oldY == (0 if self.activePlayer == "dark" else 7):
+                    if rookOldX == 0:
+                        self.castling[self.activePlayer]['leftRookMoved'] = True
+                    elif rookOldX == 7:
+                        self.castling[self.activePlayer]['rightRookMoved'] = True
+
+            if piece.lower() == 'k':
+                self.castling[self.activePlayer]['kingMoved'] = True
+            elif piece.lower() == 'r':
+                if oldY == (0 if self.activePlayer == "dark" else 7):
+                    if oldX == 0:
+                        self.castling[self.activePlayer]['leftRookMoved'] = True
+                    elif oldX == 7:
+                        self.castling[self.activePlayer]['rightRookMoved'] = True
+
+            if self.enPassantTarget is not None:
+                x, y = self.enPassantTarget
+                if (piece == 'P' and self.getPiece(x, y) == 'p') or (piece == 'p' and self.getPiece(x, y) == 'P'):
+                    if (newX, newY + (1 if piece.isupper() else -1)) == self.enPassantTarget:
+                        self.setPiece(*self.enPassantTarget, '.')
+                        self.enPassantPerformed = True
+
+            self.setPiece(newX, newY, piece)
+            self.setPiece(oldX, oldY, '.')
+
+            if not self.enPassantPerformed:
+                if piece.lower() == 'p' and abs(newY - oldY) == 2:
+                    self.enPassantTarget = (newX, newY)
+                else:
+                    self.enPassantTarget = None
 
     # ----------------------------------------------------------
 
@@ -80,6 +134,11 @@ class ChessLogic:
 
                 if target != '.' and (target.isupper() != piece.isupper()):
                     moves.append([x + dx, y + moveDir])
+
+        if self.enPassantTarget is not None:
+            enX, enY = self.enPassantTarget
+            if y == enY and (x - 1 == enX or x + 1 == enX):
+                moves.append([enX, enY + moveDir])
 
         return moves
 
@@ -166,6 +225,23 @@ class ChessLogic:
                 if target == '.' or target.isupper() != piece.isupper():
                     moves.append([newX, newY])
 
+        castlingMoves = self.getCastlingMoves(x, y)
+        if castlingMoves:
+            moves.extend(castlingMoves)
+
+        return moves
+
+    def getCastlingMoves(self, x, y):
+        moves = []
+
+        if not self.castling[self.activePlayer]['kingMoved']:
+            if not self.castling[self.activePlayer]['leftRookMoved']:
+                if all(self.getPiece(i, y) == '.' for i in range(x - 1, 0, -1)):
+                    moves.append([x - 2, y])
+            if not self.castling[self.activePlayer]['rightRookMoved']:
+                if all(self.getPiece(i, y) == '.' for i in range(x + 1, 7)):
+                    moves.append([x + 2, y])
+
         return moves
 
     # ----------------------------------------------------------
@@ -191,10 +267,15 @@ class ChessLogic:
     def isInCheck(self, isLight):
         kingX, kingY = self.getKingPos(isLight)
 
-        return self.isSquareAttacked(kingX, kingY, isLight)
+        return kingX, kingY, self.isSquareAttacked(kingX, kingY, isLight)
+
+    def isCheck(self, side):
+        isLight = (self.activePlayer == side)
+
+        return self.isInCheck(not isLight)
 
     def isCheckmate(self, isLight):
-        if not self.isInCheck(isLight):
+        if not self.isInCheck(isLight)[2]:
             return False
 
         for x, y in itertools.product(range(8), range(8)):
@@ -214,17 +295,50 @@ class ChessLogic:
 
         piece = self.getPiece(x, y)
         for newX, newY in possibleMoves:
-            
             targetPiece = self.getPiece(newX, newY)
 
-            self.movePiece(x, y, newX, newY)
-
-            if not self.isInCheck(piece.isupper()):
+            self.testMovePiece(x, y, newX, newY)
+            if not self.isInCheck(piece.isupper())[2]:
                 legalMoves.append([newX, newY])
-
-            self.movePiece(newX, newY, x, y)
+            self.testMovePiece(newX, newY, x, y)
 
             if targetPiece != '.':
                 self.setPiece(newX, newY, targetPiece)
 
         return legalMoves
+
+    def isEnPassant(self):
+        enPassantPerformed = self.enPassantPerformed
+        target = self.enPassantTarget
+
+        if enPassantPerformed:
+            self.enPassantPerformed = False
+            self.enPassantTarget = None
+
+        return enPassantPerformed, target
+
+    def isCastling(self):
+        castlingPerformed = self.castlingPerformed
+        castlingRookPos = self.castlingRookPos
+
+        if castlingPerformed:
+            self.castlingPerformed = False
+            self.castlingRookPos = None
+
+        return castlingPerformed, castlingRookPos
+
+    def isPromotion(self, x, y):
+        piece = self.getPiece(x, y)
+        if (piece == "P" and y == 0) or (piece == "p" and y == 7):
+            return True
+
+        return False
+
+    def promotePawn(self, x, y, newPieceName):
+        piece = self.getPiece(x, y)
+        if piece.isupper():
+            newPieceName = newPieceName.upper()
+        else:
+            newPieceName = newPieceName.lower()
+
+        self.setPiece(x, y, newPieceName)
