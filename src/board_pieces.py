@@ -165,15 +165,11 @@ class Piece(QGraphicsPixmapItem):
         x, y = self.xyToGrid(self.x(), self.y())
         self.scene().chessboard.promotePawn(x, y, newPieceName)
 
-    def playerMove(self):
-        newPos = self.pos()
-        endX, endY = self.xyToGrid(newPos.x(), newPos.y())
-        startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
-
+    def playerMove(self, startX, startY, endX, endY, text=False):
         if [endX, endY] in self.validMoves:
             self.scene().chessboard.movePiece(startX, startY, endX, endY)
 
-            if self.scene().chessboard.isPromotion(endX, endY):
+            if not text and self.scene().chessboard.isPromotion(endX, endY):
                 self.showPromotionDialog()
 
             castlingPerformed = self.scene().chessboard.isCastling()
@@ -207,8 +203,6 @@ class Piece(QGraphicsPixmapItem):
         else:
             self.setPos(self.startPos)
 
-        self.changeValidTileTexture(False)
-
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             if self.scene().chessboard.activePlayer == self.side:
@@ -233,6 +227,12 @@ class Piece(QGraphicsPixmapItem):
             if self.scene().chessboard.activePlayer == self.side:
                 if not self.scene().chessboard.playerMoved:
                     self.setCursor(Qt.OpenHandCursor)
-                    self.playerMove()
+
+                    newPos = self.pos()
+                    endX, endY = self.xyToGrid(newPos.x(), newPos.y())
+                    startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
+                    self.playerMove(startX, startY, endX, endY)
+
+                    self.changeValidTileTexture(False)
 
         super().mouseReleaseEvent(event)

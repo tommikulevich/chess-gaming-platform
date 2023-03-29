@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import itertools
 
@@ -342,3 +343,23 @@ class ChessLogic:
             newPieceName = newPieceName.lower()
 
         self.setPiece(x, y, newPieceName)
+
+    # ----------------------------------------------------------
+    def parseMove(self, moveText):
+        pattern = re.compile(r"^([a-h][1-8])([a-h][1-8])([qrbnQRBN]?)$")
+        match = pattern.match(moveText)
+
+        if match:
+            start, end, promotionPiece = match.groups()
+            startX, startY = ord(start[0]) - ord('a'), 8 - int(start[1])
+            endX, endY = ord(end[0]) - ord('a'), 8 - int(end[1])
+
+            if promotionPiece:
+                promotionPiece = promotionPiece.lower() if self.getPiece(startX, startY).islower() \
+                    else promotionPiece.upper()
+            else:
+                promotionPiece = None
+
+            return startX, startY, endX, endY, promotionPiece
+        else:
+            return None

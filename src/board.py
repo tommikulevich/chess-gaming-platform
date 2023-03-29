@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize, Qt, QPointF
 from PyQt5.QtGui import QBrush, QPixmap
 from PyQt5.QtWidgets import QGraphicsScene
 import itertools
@@ -24,12 +24,18 @@ class Board(QGraphicsScene):
         self.createTiles()
         self.createPieces()
 
-        self.clock1 = Clock(self.endPlayer1Move)
-        self.clock1.setOpacity(1.0)
+        self.clock1 = Clock(onClick=self.endPlayer1Move)
+        self.clock1.timer.start(1)
         self.mainWindow.clock1View.scene().addItem(self.clock1)
-        self.clock2 = Clock(self.endPlayer2Move)
-        self.clock2.setOpacity(0.5)
+        self.mainWindow.clock1View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
+
+        self.clock2 = Clock(onClick=self.endPlayer2Move)
+        self.clock2.setOpacity(0.7)
         self.mainWindow.clock2View.scene().addItem(self.clock2)
+        self.mainWindow.clock2View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
+
+        self.playerInput = self.mainWindow.playerInput
+        self.playerInput.returnPressed.connect(self.textMove)
 
     def createTiles(self):
         [self.addItem(BoardTile(self.tileSize, i, j))
@@ -74,8 +80,11 @@ class Board(QGraphicsScene):
             if self.chessboard.activePlayer == "light":
                 self.changeActivePlayer()
 
-                self.clock1.setOpacity(0.5)
+                self.clock1.setOpacity(0.7)
                 self.clock2.setOpacity(1.0)
+
+                self.clock1.timer.stop()
+                self.clock2.timer.start(1)
 
         super().mousePressEvent(event)
 
@@ -84,8 +93,11 @@ class Board(QGraphicsScene):
             if self.chessboard.activePlayer == "dark":
                 self.changeActivePlayer()
 
-                self.clock2.setOpacity(0.5)
+                self.clock2.setOpacity(0.7)
                 self.clock1.setOpacity(1.0)
+
+                self.clock2.timer.stop()
+                self.clock1.timer.start(1)
 
         super().mousePressEvent(event)
 
@@ -98,3 +110,30 @@ class Board(QGraphicsScene):
         else:
             self.chessboard.activePlayer = "light"
             self.mainWindow.playerInput.setPlaceholderText("Input | Player №1")
+
+    def textMove(self):
+        moveText = self.playerInput.text()
+
+        move = self.chessboard.parseMove(moveText)
+
+        if move is not None and not self.chessboard.playerMoved:
+            startX, startY, endX, endY, promotionPiece = move
+
+            piece = [item for item in
+                     self.items(QPointF(startX * self.tileSize, startY * self.tileSize), self.tileSize, self.tileSize)
+                     if (isinstance(item, Piece))]
+
+            if piece:
+                piece = piece[0]
+                piece.validMoves = self.chessboard.getLegalMoves(startX, startY)
+                if [endX, endY] in piece.validMoves:
+                    piece.playerMove(startX, startY, endX, endY, text=True)
+
+                    if promotionPiece is not None:
+                        piece.promotePiece(promotionPiece, f":/pieces/{self.chessboard.activePlayer}/{promotionPiece.lower()}")
+
+                    piece.update()
+        else:
+            print("Error")
+
+        self.playerInput.clear()
