@@ -1,10 +1,10 @@
-from PyQt5.QtCore import Qt, QTimer, QTime, QRectF
-from PyQt5.QtGui import QColor, QBrush, QPainter, QPen
-from PyQt5.QtWidgets import QGraphicsRectItem
+from PySide2.QtCore import Qt, QTimer, QTime, QRectF
+from PySide2.QtGui import QColor, QBrush, QPainter, QPen
+from PySide2.QtWidgets import QGraphicsRectItem
 
 
 class Clock(QGraphicsRectItem):
-    def __init__(self, size=300, timeMin=5, timeSec=0, onClick=None, parent=None):
+    def __init__(self, size=300, onClick=None, parent=None):
         super().__init__(0, 0, size, size, parent)
         self.setBrush(QBrush(QColor("white")))
         self.setPen(QPen(Qt.black, 5))
@@ -14,8 +14,11 @@ class Clock(QGraphicsRectItem):
         self.tran = int(self.size / 2)
 
         self.timer = QTimer()
-        self.time = QTime(0, timeMin, timeSec)
+        self.time = QTime(0, 0, 0)
         self.timer.timeout.connect(self.updateTime)
+
+    def setTimer(self, timeMin, timeSec):
+        self.time = QTime(0, timeMin, timeSec)
 
     def updateTime(self):
         self.time = self.time.addMSecs(-1)
@@ -39,7 +42,7 @@ class Clock(QGraphicsRectItem):
             painter.rotate(numMin * i)
 
             if i % 5 == 0:
-                painter.setPen(Qt.black)
+                painter.setPen(Qt.red)
                 painter.drawLine(0, -(self.tran - 20), 0, -(self.tran - 5))
             else:
                 painter.setPen(Qt.gray)
@@ -49,7 +52,7 @@ class Clock(QGraphicsRectItem):
 
         # Numbers (seconds)
         font = painter.font()
-        fontSize = int(self.size / 100)
+        fontSize = int(4)
         font.setPointSize(fontSize)
         painter.setFont(font)
         painter.setPen(Qt.black)
@@ -59,26 +62,31 @@ class Clock(QGraphicsRectItem):
             painter.rotate(numMin * i)
             painter.translate(0, -(self.tran - 30))
             painter.rotate(-numMin * i)
-            painter.drawText(QRectF(-10, -10, 20, 20), Qt.AlignCenter, str(i))
+
+            if i % 5 == 0:
+                painter.setPen(Qt.red)
+                painter.drawText(QRectF(-10, -10, 20, 20), Qt.AlignCenter, str(i))
+
             painter.restore()
 
         # Minute
+        painter.setPen(Qt.black)
         painter.save()
-        painter.rotate(numMin * (self.time.minute() + (self.time.second() / float(numSec))))
+        painter.rotate(-numMin * (self.time.minute() + (self.time.second() / float(numSec))))
         painter.drawLine(0, 0, 0, -(self.tran - 45))
         painter.restore()
 
         # Second
         painter.setPen(Qt.red)
         painter.save()
-        painter.rotate(numMin * self.time.second())
+        painter.rotate(-numMin * self.time.second())
         painter.drawLine(0, 0, 0, -(self.tran - 25))
         painter.restore()
 
         # Millisecond
         painter.setPen(Qt.blue)
         painter.save()
-        painter.rotate(numMin * numSec * (self.time.msec() / float(numMSec)))
+        painter.rotate(-numMin * numSec * (self.time.msec() / float(numMSec)))
         painter.drawLine(0, 0, 0, -(self.tran - 15))
         painter.restore()
 

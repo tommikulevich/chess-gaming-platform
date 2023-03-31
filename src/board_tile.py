@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QRectF, QPointF
-from PyQt5.QtGui import QImage, QColor, QPen, QFont
-from PyQt5.QtWidgets import QGraphicsItem, QMenu, QAction
+from PySide2.QtCore import QRectF, QPointF
+from PySide2.QtGui import QImage, QColor, QPen, QFont
+from PySide2.QtWidgets import QGraphicsItem, QMenu, QAction
 
 from data import resources_rc
 

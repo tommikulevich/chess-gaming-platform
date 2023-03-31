@@ -16,7 +16,7 @@ class ChessLogic:
             ["R", "N", "B", "Q", "K", "B", "N", "R"]
         ])
 
-        self.activePlayer = "light"
+        self.activePlayer = None
         self.playerMoved = False
 
         self.check = False
@@ -27,7 +27,7 @@ class ChessLogic:
         self.castlingRookPos = None
         self.castlingPerformed = False
         self.castling = {'light': {'kingMoved': False, 'leftRookMoved': False, 'rightRookMoved': False},
-                         'dark':  {'kingMoved': False, 'leftRookMoved': False, 'rightRookMoved': False}}
+                         'dark': {'kingMoved': False, 'leftRookMoved': False, 'rightRookMoved': False}}
 
     def switchActivePlayer(self):
         if self.activePlayer == "light":
@@ -345,21 +345,84 @@ class ChessLogic:
         self.setPiece(x, y, newPieceName)
 
     # ----------------------------------------------------------
+
+    def findPiecesXY(self, pieceType):
+        coords = np.where(self.textBoard == pieceType)
+        return list(zip(coords[1], coords[0]))
+
     def parseMove(self, moveText):
-        pattern = re.compile(r"^([a-h][1-8])([a-h][1-8])([qrbnQRBN]?)$")
+        moveText = moveText.strip()
+        if moveText == "O-O" or moveText == "O-O-O":
+            piece = 'K' if self.activePlayer == 'light' else 'k'
+            startX, startY = self.findPiecesXY(piece)[0]
+            dx = 2 if moveText == "O-O" else -2
+            endX, endY = startX + dx, startY
+
+            return startX, startY, endX, endY, None
+
+        pattern = re.compile(r"^([RNBQK]?)([a-h]?)([1-8]?)([x]?)([a-h][1-8])(=?[qrbnQRBN]?)$")
         match = pattern.match(moveText)
 
         if match:
-            start, end, promotionPiece = match.groups()
-            startX, startY = ord(start[0]) - ord('a'), 8 - int(start[1])
+            piece, file, rank, capture, end, promotionPiece = match.groups()
+
+            if not piece:
+                piece = 'P' if self.activePlayer == 'light' else 'p'
+
+            if self.activePlayer == 'dark':
+                piece = piece.lower()
+
             endX, endY = ord(end[0]) - ord('a'), 8 - int(end[1])
+            piecePositions = self.findPiecesXY(piece)
+            if piecePositions:
+                count = 0
+                startX, startY = 0, 0
+                notDisambiguating = False
 
-            if promotionPiece:
-                promotionPiece = promotionPiece.lower() if self.getPiece(startX, startY).islower() \
-                    else promotionPiece.upper()
+                for x, y in piecePositions:
+                    legalMoves = self.getLegalMoves(x, y)
+
+                    if [endX, endY] in legalMoves:
+                        if promotionPiece:
+                            promotionPiece = promotionPiece[1].lower() if self.getPiece(x, y).islower() else \
+                                promotionPiece[1].upper()
+                        else:
+                            promotionPiece = None
+
+                        if piece.lower() != 'p':
+                            if file and rank:
+                                startX, startY = ord(file) - ord('a'), 8 - int(rank)
+                                if startX == x and startY == y:
+                                    notDisambiguating = True
+                                    break
+                            elif file:
+                                startX, startY = ord(file) - ord('a'), y
+
+                                if startX == x:
+                                    notDisambiguating = True
+                                    break
+                            elif rank:
+                                startX, startY = x, 8 - int(rank)
+
+                                if startY == y:
+                                    notDisambiguating = True
+                                    break
+                            else:
+                                count += 1
+                                startX, startY = x, y
+                        else:
+                            count += 1
+                            startX, startY = x, y
+
+                if count == 1 or notDisambiguating:
+                    return startX, startY, endX, endY, promotionPiece
+                elif count > 1:
+                    print("Disambiguating move")
+                else:
+                    print("Wrong move")
             else:
-                promotionPiece = None
-
-            return startX, startY, endX, endY, promotionPiece
+                print("Parse error")
         else:
-            return None
+            print("Match error")
+
+        return None

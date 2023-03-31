@@ -6,13 +6,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1546</width>
+    <width>1540</width>
     <height>890</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>1320</width>
+    <width>1540</width>
     <height>890</height>
    </size>
   </property>
@@ -33,6 +33,20 @@
       <height>800</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <stylestrategy>NoAntialias</stylestrategy>
+     </font>
+    </property>
+    <property name="verticalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="sizeAdjustPolicy">
+     <enum>QAbstractScrollArea::AdjustToContents</enum>
+    </property>
    </widget>
    <widget class="QGraphicsView" name="clock1">
     <property name="geometry">
@@ -43,6 +57,15 @@
       <height>351</height>
      </rect>
     </property>
+    <property name="verticalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="sizeAdjustPolicy">
+     <enum>QAbstractScrollArea::AdjustToContents</enum>
+    </property>
    </widget>
    <widget class="QGraphicsView" name="clock2">
     <property name="geometry">
@@ -52,6 +75,15 @@
       <width>351</width>
       <height>351</height>
      </rect>
+    </property>
+    <property name="verticalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="sizeAdjustPolicy">
+     <enum>QAbstractScrollArea::AdjustToContents</enum>
     </property>
    </widget>
    <widget class="QLineEdit" name="input">
@@ -67,6 +99,7 @@
      <font>
       <family>Arial Narrow</family>
       <pointsize>12</pointsize>
+      <weight>75</weight>
       <italic>false</italic>
       <bold>true</bold>
       <underline>false</underline>
@@ -98,6 +131,7 @@
      <font>
       <family>Gadugi</family>
       <pointsize>10</pointsize>
+      <weight>75</weight>
       <bold>true</bold>
      </font>
     </property>
@@ -121,6 +155,7 @@
      <font>
       <family>Gadugi</family>
       <pointsize>10</pointsize>
+      <weight>75</weight>
       <bold>true</bold>
      </font>
     </property>
@@ -144,6 +179,7 @@
      <font>
       <family>Courier New</family>
       <pointsize>10</pointsize>
+      <weight>75</weight>
       <bold>true</bold>
      </font>
     </property>
@@ -157,18 +193,24 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1546</width>
+     <width>1540</width>
      <height>22</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuHelp">
+   <widget class="QMenu" name="options">
     <property name="title">
-     <string>Help</string>
+     <string>Start</string>
     </property>
+    <addaction name="startGame"/>
    </widget>
-   <addaction name="menuHelp"/>
+   <addaction name="options"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="startGame">
+   <property name="text">
+    <string>Start new game</string>
+   </property>
+  </action>
  </widget>
  <resources>
   <include location="../Arch/resources/resources.qrc"/>

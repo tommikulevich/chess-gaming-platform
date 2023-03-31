@@ -1,7 +1,7 @@
-from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtWidgets import QGraphicsPixmapItem, QMenu, QAction, QMessageBox, QStyle, QApplication, QGridLayout, \
+from PySide2.QtCore import Qt, QPointF, QRectF
+from PySide2.QtWidgets import QGraphicsPixmapItem, QMenu, QAction, QMessageBox, QStyle, QApplication, QGridLayout, \
     QDialog, QLabel, QPushButton
-from PyQt5.QtGui import QPixmap, QIcon
+from PySide2.QtGui import QPixmap, QIcon
 
 from data import resources_rc
 from board_tile import BoardTile
@@ -168,7 +168,6 @@ class Piece(QGraphicsPixmapItem):
     def playerMove(self, startX, startY, endX, endY, text=False):
         if [endX, endY] in self.validMoves:
             self.scene().chessboard.movePiece(startX, startY, endX, endY)
-
             if not text and self.scene().chessboard.isPromotion(endX, endY):
                 self.showPromotionDialog()
 
@@ -176,18 +175,18 @@ class Piece(QGraphicsPixmapItem):
             if castlingPerformed[0]:
                 rookOldX, rookNewX = castlingPerformed[1]
                 rookItem = [item for item in
-                            self.scene().items(self.gridToXY(rookOldX, endY), self.pieceSize, self.pieceSize)
+                            self.scene().items(QRectF(self.gridToXY(rookOldX, endY).x(), self.gridToXY(rookOldX, endY).y(), self.pieceSize, self.pieceSize))
                             if (isinstance(item, Piece) and item is not self)]
                 rookItem[0].setPos(self.gridToXY(rookNewX, endY))
 
             enPassantPerformed = self.scene().chessboard.isEnPassant()
             if enPassantPerformed[0]:
                 x, y = enPassantPerformed[1]
-                targetItem = [item for item in self.scene().items(self.gridToXY(x, y), self.pieceSize, self.pieceSize)
+                targetItem = [item for item in self.scene().items(QRectF(self.gridToXY(x, y).x(), self.gridToXY(x, y).y(), self.pieceSize, self.pieceSize))
                               if (isinstance(item, Piece) and item is not self)]
             else:
                 targetItem = [item for item in
-                              self.scene().items(self.gridToXY(endX, endY), self.pieceSize, self.pieceSize)
+                              self.scene().items(QRectF(self.gridToXY(endX, endY).x(), self.gridToXY(endX, endY).y(), self.pieceSize, self.pieceSize))
                               if (isinstance(item, Piece) and item is not self)]
 
             if targetItem:
@@ -200,6 +199,20 @@ class Piece(QGraphicsPixmapItem):
 
             self.changeCheckKingTexture(startX, startY, *self.scene().chessboard.isCheck("light"))
             self.changeCheckKingTexture(startX, startY, *self.scene().chessboard.isCheck("dark"))
+
+            isCheckmate = self.scene().chessboard.isCheckmate(not self.scene().chessboard.playerMoved)
+            if isCheckmate:
+                self.scene().clock1.timer.stop()
+                self.scene().clock2.timer.stop()
+
+                msg = QMessageBox()
+                msg.setWindowIcon(QIcon(QApplication.instance().style().standardPixmap(QStyle.SP_FileDialogInfoView)))
+                msg.setIcon(QMessageBox.Information)
+                msg.setText(f"Winner: {self.scene().chessboard.activePlayer} side!")
+                msg.setWindowTitle("Game over")
+                msg.exec_()
+
+                self.scene().chessboard.activePlayer = None
         else:
             self.setPos(self.startPos)
 
@@ -214,8 +227,9 @@ class Piece(QGraphicsPixmapItem):
                     self.validMoves = self.scene().chessboard.getLegalMoves(startX, startY)
 
                     self.changeValidTileTexture(True)
+                    self.scene().update()
 
-        super().mousePressEvent(event)
+                    super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         if self.scene().chessboard.activePlayer == self.side:
@@ -234,5 +248,6 @@ class Piece(QGraphicsPixmapItem):
                     self.playerMove(startX, startY, endX, endY)
 
                     self.changeValidTileTexture(False)
+                    self.scene().update()
 
-        super().mouseReleaseEvent(event)
+                    super().mouseReleaseEvent(event)

@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QSize, Qt, QPointF
-from PyQt5.QtGui import QBrush, QPixmap
-from PyQt5.QtWidgets import QGraphicsScene
+from PySide2.QtCore import QSize, Qt, QPointF, QRect
+from PySide2.QtGui import QBrush, QPixmap
+from PySide2.QtWidgets import QGraphicsScene, QGraphicsView
 import itertools
 
 from data import resources_rc
@@ -25,14 +25,12 @@ class Board(QGraphicsScene):
         self.createPieces()
 
         self.clock1 = Clock(onClick=self.endPlayer1Move)
-        self.clock1.timer.start(1)
+        self.clock1.setOpacity(0.7)
         self.mainWindow.clock1View.scene().addItem(self.clock1)
-        self.mainWindow.clock1View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
 
         self.clock2 = Clock(onClick=self.endPlayer2Move)
         self.clock2.setOpacity(0.7)
         self.mainWindow.clock2View.scene().addItem(self.clock2)
-        self.mainWindow.clock2View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
 
         self.playerInput = self.mainWindow.playerInput
         self.playerInput.returnPressed.connect(self.textMove)
@@ -120,20 +118,23 @@ class Board(QGraphicsScene):
             startX, startY, endX, endY, promotionPiece = move
 
             piece = [item for item in
-                     self.items(QPointF(startX * self.tileSize, startY * self.tileSize), self.tileSize, self.tileSize)
+                     self.items(QRect(startX * self.tileSize, startY * self.tileSize, self.tileSize, self.tileSize))
                      if (isinstance(item, Piece))]
 
             if piece:
                 piece = piece[0]
                 piece.validMoves = self.chessboard.getLegalMoves(startX, startY)
-                if [endX, endY] in piece.validMoves:
+
+                if [endX, endY] in piece.validMoves and piece.side == self.chessboard.activePlayer:
                     piece.playerMove(startX, startY, endX, endY, text=True)
 
                     if promotionPiece is not None:
                         piece.promotePiece(promotionPiece, f":/pieces/{self.chessboard.activePlayer}/{promotionPiece.lower()}")
 
                     piece.update()
+                else:
+                    print("Invalid format/move")
         else:
-            print("Error")
+            print("Player already played or invalid format")
 
         self.playerInput.clear()
