@@ -161,8 +161,12 @@ class Board(QGraphicsScene):
         # Perform move
         piece.playerMove(startX, startY, endX, endY, text=True)
 
+        # Check for promotion
         if promotionPiece is not None:
-            piece.promotePiece(promotionPiece, f":/pieces/{self.logic.activePlayer}/{promotionPiece.lower()}")
+            if self.logic.isPromotion(endX, endY):
+                piece.promotePiece(promotionPiece, f":/pieces/{self.logic.activePlayer}/{promotionPiece.lower()}")
+            else:
+                self.errorLabel.setText(self.logic.getError(8))
 
         piece.update()
 

@@ -61,6 +61,7 @@ class Piece(QGraphicsPixmapItem):
         if side != item.side:
             return
 
+        item.pieceTheme = self.pieceTheme
         item.pieceStyle = f":/pieces/{self.pieceTheme}/{item.pieceName.lower()}"
         item.loadTexture()
         item.update()

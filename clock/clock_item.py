@@ -130,7 +130,7 @@ class Clock(QGraphicsEllipseItem):
         painter.setPen(QPen(Qt.black, 3))
         hours = self.time.hour() if self.time.hour() <= 12 else self.time.hour() - 12
         painter.rotate(-30 * (hours + (self.time.minute() / float(60)) + (self.time.second() / float(60 * 60))))
-        painter.drawLine(0, 0, 0, -(self.tran - 90))
+        painter.drawLine(0, 0, 0, -(self.tran - 80))
 
         painter.restore()
 
@@ -139,7 +139,7 @@ class Clock(QGraphicsEllipseItem):
 
         painter.setPen(QPen(Qt.black, 2))
         painter.rotate(-6 * (self.time.minute() + (self.time.second() / float(60))))
-        painter.drawLine(0, 0, 0, -(self.tran - 60))
+        painter.drawLine(0, 0, 0, -(self.tran - 65))
 
         painter.restore()
 

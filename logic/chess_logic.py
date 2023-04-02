@@ -44,7 +44,9 @@ class ChessLogic:
                   "Ambiguous move! Specify it with file and/or rank",
                   "Move is incorrect",
                   "Please make your move!",
-                  "Start new game first!"]
+                  "Start new game first!",
+                  "You can't do a promotion now!",
+                  "Castling is not possible!"]
 
         return errors[no]
 
@@ -138,6 +140,12 @@ class ChessLogic:
     def getLegalMoves(self, x, y):
         possibleMoves = self.getPossibleMoves(x, y)
         piece = self.getPiece(x, y)
+
+        # Castling analyzing
+        if piece.lower() == 'k':
+            castlingMoves = self.getCastlingMoves(x, y)
+            if castlingMoves:
+                possibleMoves.extend(castlingMoves)
 
         legalMoves = [[newX, newY] for newX, newY in possibleMoves if not self.simulateMove(x, y, newX, newY, piece)]
 
@@ -259,11 +267,6 @@ class ChessLogic:
                  if 0 <= x + dx < 8 and 0 <= y + dy < 8 and (self.getPiece(x + dx, y + dy) == '.'
                  or self.getPiece(x + dx, y + dy).isupper() != piece.isupper())]
 
-        # Castling analyzing
-        castlingMoves = self.getCastlingMoves(x, y)
-        if castlingMoves:
-            moves.extend(castlingMoves)
-
         return moves
 
     # ---------------- Moving (special) ----------------
@@ -333,15 +336,37 @@ class ChessLogic:
     def getCastlingMoves(self, x, y):
         moves = []
 
-        if not self.castling[self.activePlayer]['kingMoved']:
-            if not self.castling[self.activePlayer]['leftRookMoved']:
-                if all(self.getPiece(i, y) == '.' for i in range(x - 1, 0, -1)):
-                    moves.append([x - 2, y])
-            if not self.castling[self.activePlayer]['rightRookMoved']:
-                if all(self.getPiece(i, y) == '.' for i in range(x + 1, 7)):
-                    moves.append([x + 2, y])
+        # If the king has already been moved
+        if self.castling[self.activePlayer]['kingMoved']:
+            return moves
+
+        isLight = (self.activePlayer == "light")
+
+        if not self.castling[self.activePlayer]['leftRookMoved']:
+            if self.isPathClear(x, y, "left") and not self.isKingCrossingAttackedSquares(x, y, "left", isLight):
+                moves.append([x - 2, y])
+
+        if not self.castling[self.activePlayer]['rightRookMoved']:
+            if self.isPathClear(x, y, "right") and not self.isKingCrossingAttackedSquares(x, y, "right", isLight):
+                moves.append([x + 2, y])
 
         return moves
+
+    def isPathClear(self, x, y, direction):
+        if direction == "left":
+            return all(self.getPiece(i, y) == '.' for i in range(x - 1, 0, -1))
+        elif direction == "right":
+            return all(self.getPiece(i, y) == '.' for i in range(x + 1, 7))
+
+    def isKingCrossingAttackedSquares(self, x, y, direction, isLight):
+        if direction == "left":
+            return self.isSquareAttacked(x, y, isLight) \
+                   or self.isSquareAttacked(x - 1, y, isLight) \
+                   or self.isSquareAttacked(x - 2, y, isLight)
+        elif direction == "right":
+            return self.isSquareAttacked(x, y, isLight) \
+                   or self.isSquareAttacked(x + 1, y, isLight) \
+                   or self.isSquareAttacked(x + 2, y, isLight)
 
     # ---------------- Short algebraic notation parsing ----------------
 
@@ -356,7 +381,10 @@ class ChessLogic:
             dx = 2 if moveText == "O-O" else -2
             endX, endY = startX + dx, startY
 
-            return startX, startY, endX, endY, None
+            if [endX, endY] in self.getCastlingMoves(startX, startY):
+                return startX, startY, endX, endY, None
+            else:
+                return self.getError(10)
 
         # Text analysis
         pattern = re.compile(r"^([RNBQK]?)([a-h]?)([1-8]?)([x]?)([a-h][1-8])(=?[qrbnQRBN]?)$")
