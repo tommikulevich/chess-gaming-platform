@@ -154,16 +154,13 @@ class Board(QGraphicsScene):
             self.errorLabel.setText(self.logic.getError(2))
             return
 
+        # Check of failed promotion
+        if promotionPiece is not None and self.logic.isPromotion(endX, endY):
+            self.errorLabel.setText(self.logic.getError(8))
+            return
+
         # Perform move
-        piece.playerMove(startX, startY, endX, endY, text=True)
-
-        # Check for promotion
-        if promotionPiece is not None:
-            if self.logic.isPromotion(endX, endY):
-                piece.promotePiece(promotionPiece, f":/pieces/{self.logic.activePlayer}/{promotionPiece.lower()}")
-            else:
-                self.errorLabel.setText(self.logic.getError(8))
-
+        piece.playerMove(startX, startY, endX, endY, text=promotionPiece)
         piece.update()
 
         # Clearing input field

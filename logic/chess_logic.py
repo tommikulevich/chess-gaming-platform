@@ -187,11 +187,12 @@ class ChessLogic:
         moveDir = 1 if piece.islower() else -1
 
         regularMoves = []
-        if self.getPiece(x, y + moveDir) == '.':
-            regularMoves.append([x, y + moveDir])
-            if (y == 1 and piece.islower()) or (y == 6 and piece.isupper()):
-                if self.getPiece(x, y + 2 * moveDir) == '.':
-                    regularMoves.append([x, y + 2 * moveDir])
+        if 0 <= y + moveDir < 8:
+            if self.getPiece(x, y + moveDir) == '.':
+                regularMoves.append([x, y + moveDir])
+                if (y == 1 and piece.islower()) or (y == 6 and piece.isupper()):
+                    if self.getPiece(x, y + 2 * moveDir) == '.':
+                        regularMoves.append([x, y + 2 * moveDir])
 
         # If en passant is possible
         if self.enPassantTarget is not None:
@@ -200,7 +201,7 @@ class ChessLogic:
                 regularMoves.append([enX, enY + moveDir])
 
         captureMoves = [[x + dx, y + moveDir] for dx in (-1, 1)
-                        if 0 <= x + dx < 8
+                        if 0 <= x + dx < 8 and 0 <= y + moveDir < 8
                         and self.getPiece(x + dx, y + moveDir).isupper() != piece.isupper()
                         and self.getPiece(x + dx, y + moveDir) != '.']
 

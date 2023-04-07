@@ -132,7 +132,7 @@ class Piece(QGraphicsPixmapItem):
         layout = QGridLayout()
 
         pieces = {'q': 'Queen', 'r': 'Rook', 'n': 'Knight', 'b': 'Bishop'}
-        [self.addPieceChoice(*x, promotionDialog, layout) for x in enumerate(pieces.items())]
+        [self.addPieceChoice(*symb, promotionDialog, layout) for symb in enumerate(pieces.items())]
 
         promotionDialog.setLayout(layout)
         promotionDialog.exec_()
@@ -169,26 +169,34 @@ class Piece(QGraphicsPixmapItem):
 
         return QPointF(x, y)
 
-    def promotePiece(self, newPieceName, newPieceStyle):
+    def promotePiece(self, newPieceName, newPieceStyle, x=None, y=None):
         # Changing piece name and texture
-        self.pieceName = newPieceName
+        self.pieceName = newPieceName.lower() if self.pieceName.islower() else newPieceName.upper()
         self.pieceStyle = newPieceStyle
         self.loadTexture()
         self.update()
 
         # Performing promotion
-        x, y = self.xyToGrid(self.x(), self.y())
+        if (x, y) == (None, None):
+            x, y = self.xyToGrid(self.x(), self.y())
+
         self.scene().logic.promotePawn(x, y, newPieceName)
 
-    def playerMove(self, startX, startY, endX, endY, text=False):
+    def playerMove(self, startX, startY, endX, endY, text=None):
         if [endX, endY] not in self.legalMoves:     # If a player wants to make an illegal move
             self.setPos(self.startPos)
             return
 
         # Performing move in logic
         self.scene().logic.movePiece(startX, startY, endX, endY)
-        if not text and self.scene().logic.isPromotion(endX, endY):
-            self.showPromotionDialog()
+
+        # Checking and performing the promotion
+        if self.scene().logic.isPromotion(endX, endY):
+            if text is None:
+                self.showPromotionDialog()
+            else:
+                promotionPiece = text
+                self.promotePiece(promotionPiece, f":/pieces/{self.pieceTheme}/{promotionPiece.lower()}", endX, endY)
 
         # Checking and performing the castling
         castlingPerformed = self.scene().logic.isCastling()
