@@ -70,18 +70,15 @@ class Board(QGraphicsScene):
 
     def endPlayerMove(self, event, player):
         if event.button() != Qt.LeftButton:
-            super().mousePressEvent(event)
             return
 
-        # If the player tries to stop not their clock
+        # If the player tries to stop not his clock
         if self.logic.activePlayer != player:
-            super().mousePressEvent(event)
             return
 
         # If the player has not yet made a move
         if not self.logic.playerMoved:
             self.errorLabel.setText(self.logic.getError(6))
-            super().mousePressEvent(event)
             return
 
         # Changing active player and setting clocks
@@ -90,19 +87,18 @@ class Board(QGraphicsScene):
         if player == "light":
             self.clock1.setOpacity(0.7)
             self.clock2.setOpacity(1.0)
-            self.clock1.timer.stop()
-            self.clock2.timer.start(1)
+            self.clock1.pauseTimer()
+            self.clock2.startTimer()
         else:
             self.clock1.setOpacity(1.0)
             self.clock2.setOpacity(0.7)
-            self.clock1.timer.start(1)
-            self.clock2.timer.stop()
-
-        super().mousePressEvent(event)
+            self.clock1.startTimer()
+            self.clock2.pauseTimer()
 
     def changeActivePlayer(self):
-        # Clearing error label and cleaning playerMoved variable
+        # Clearing error label and input field. Cleaning playerMoved variable
         self.errorLabel.clear()
+        self.playerInput.clear()
         self.logic.playerMoved = False
 
         # Switching player
@@ -113,7 +109,7 @@ class Board(QGraphicsScene):
             self.logic.activePlayer = "light"
             self.playerInput.setPlaceholderText("Input | Player №1")
 
-        # Cleaning all legalMoves variables
+        # Cleaning all legalMoves variables from all pieces
         [piece.__setattr__('legalMoves', []) for piece in self.items() if isinstance(piece, Piece)]
 
     def textMove(self):
@@ -124,6 +120,11 @@ class Board(QGraphicsScene):
         moveText = self.playerInput.text()
         move = self.logic.parseMove(moveText)
 
+        # If the player has already made a move
+        if self.logic.playerMoved:
+            self.errorLabel.setText(self.logic.getError(1))
+            return
+
         # If parsing failed
         if move is None:
             self.errorLabel.setText(self.logic.getError(0))
@@ -132,11 +133,6 @@ class Board(QGraphicsScene):
         # If disambiguating or incorrect move
         if isinstance(move, str):
             self.errorLabel.setText(move)
-            return
-
-        # If the player has already made a move
-        if self.logic.playerMoved:
-            self.errorLabel.setText(self.logic.getError(1))
             return
 
         # Move processing after parsing

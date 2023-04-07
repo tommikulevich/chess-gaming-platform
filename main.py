@@ -1,7 +1,8 @@
 import sys
 from PySide2.QtWidgets import QApplication
 
-from qwindows.main_window import MainWindow
+import data.ui.resources_qrc
+from qt_windows.main_window import MainWindow
 
 
 if __name__ == "__main__":

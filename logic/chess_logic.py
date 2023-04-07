@@ -37,16 +37,19 @@ class ChessLogic:
 
     @staticmethod
     def getError(no):
-        errors = ["Error when parsing move! Probably format is incorrect",
-                  "You have already made your move! Click to your clock to finish",
-                  "You are trying to move the opponent's piece!",
-                  "You are trying to move wrong piece!",
-                  "Ambiguous move! Specify it with file and/or rank",
-                  "Move is incorrect",
-                  "Please make your move!",
-                  "Start new game first!",
-                  "You can't do a promotion now!",
-                  "Castling is not possible!"]
+        errors = [
+            "Error when parsing move! Probably format is incorrect",
+            "You have already made your move! Click to your clock to finish",
+            "You are trying to move the opponent's piece!",
+            "You are trying to move wrong piece!",
+            "Ambiguous move! Specify it with file and/or rank",
+            "Move is incorrect",
+            "Please make your move!",
+            "Start new game first!",
+            "You can't do a promotion now!",
+            "Castling is not possible!",
+            "You can't do the capture!"
+        ]
 
         return errors[no]
 
@@ -207,25 +210,22 @@ class ChessLogic:
         piece = self.getPiece(x, y)
         rookShifts = np.array([(1, 0), (-1, 0), (0, 1), (0, -1)])
 
-        moves = [move for shift in rookShifts for move in self.rookMoveCalculations(piece, np.array([x, y]), shift)]
+        moves = [move for shift in rookShifts for move in self.rookMoveCalculations(piece, x, y, shift)]
 
         return moves
 
-    def rookMoveCalculations(self, piece, position, shift):
-        allInd = np.array([(i * shift[0] + position[0], i * shift[1] + position[1]) for i in range(1, 8)])
+    def rookMoveCalculations(self, piece, x, y, shift):
+        allInd = np.array([(i * shift[0] + x, i * shift[1] + y) for i in range(1, 8)])
         validInd = np.all((allInd >= 0) & (allInd < 8), axis=1)
         validPos = allInd[validInd]
 
         targetPieces = [self.getPiece(*pos) for pos in validPos]
-        try:
-            firstNonEmpty = targetPieces.index(next(filter(lambda p: p != '.', targetPieces)))
+        firstNonEmpty = next((i for i, p in enumerate(targetPieces) if p != '.'), len(targetPieces))
 
-            if targetPieces[firstNonEmpty].isupper() != piece.isupper():
-                return validPos[:firstNonEmpty + 1].tolist()
-            else:
-                return validPos[:firstNonEmpty].tolist()
-        except StopIteration:
-            return validPos.tolist()
+        if firstNonEmpty < len(targetPieces) and targetPieces[firstNonEmpty].isupper() != piece.isupper():
+            return validPos[:firstNonEmpty + 1].tolist()
+        else:
+            return validPos[:firstNonEmpty].tolist()
 
     def getKnightMoves(self, x, y):
         piece = self.getPiece(x, y)
@@ -368,14 +368,14 @@ class ChessLogic:
                    or self.isSquareAttacked(x + 1, y, isLight) \
                    or self.isSquareAttacked(x + 2, y, isLight)
 
-    # ---------------- Short algebraic notation parsing ----------------
+    # ---------------- Algebraic notation parsing ----------------
 
     def parseMove(self, moveText):
         # Removing spaces from text
         moveText = moveText.strip()
 
         # If castling combination
-        if moveText == "O-O" or moveText == "O-O-O":
+        if moveText in ["O-O", "O-O-O", "0-0", "0-0-0"]:
             piece = 'K' if self.activePlayer == 'light' else 'k'
             startX, startY = self.findPiecesXY(piece)[0]
             dx = 2 if moveText == "O-O" else -2
@@ -384,7 +384,7 @@ class ChessLogic:
             if [endX, endY] in self.getCastlingMoves(startX, startY):
                 return startX, startY, endX, endY, None
             else:
-                return self.getError(10)
+                return self.getError(9)
 
         # Text analysis
         pattern = re.compile(r"^([RNBQK]?)([a-h]?)([1-8]?)([x]?)([a-h][1-8])(=?[qrbnQRBN]?)$")
@@ -398,6 +398,10 @@ class ChessLogic:
         piece, file, rank, capture, end, promotionPiece = match.groups()
         endX, endY = ord(end[0]) - ord('a'), 8 - int(end[1])
 
+        # If there is no capture to perform
+        if capture and self.getPiece(endX, endY) == '.':
+            return self.getError(10)
+
         # If no piece type is specified - it is about pawns (e.g. 'e4')
         if not piece:
             piece = 'P' if self.activePlayer == 'light' else 'p'
@@ -406,52 +410,59 @@ class ChessLogic:
         if self.activePlayer == 'dark':
             piece = piece.lower()
 
-        # Finding the position of all pieces of a given type
+        # Finding the position of all player pieces of a given type
         piecePositions = self.findPiecesXY(piece)
         if not piecePositions:
             return self.getError(3)
 
-        unambiguousMoves = 0
-        startX, startY = 0, 0
-        isUnambiguous = False
+        # Finding possible piece positions
+        possiblePositions = [
+            (x, y) for x, y in piecePositions
+            if [endX, endY] in self.getLegalMoves(x, y)
+        ]
 
-        # Search after found pieces
-        for x, y in piecePositions:
-            legalMoves = self.getLegalMoves(x, y)
+        # Checking unambiguous moves
+        isUnambiguous, startX, startY = self.isMoveUnambiguous(possiblePositions, file, rank)
+        if not isUnambiguous:
+            return self.getError(4 if len(possiblePositions) > 1 else 5)
 
-            if [endX, endY] in legalMoves:
-                if promotionPiece:
-                    promotionPiece = promotionPiece[1].lower() if self.getPiece(x, y).islower() else \
-                        promotionPiece[1].upper()
-                else:
-                    promotionPiece = None
+        # Checking for promotion piece
+        if promotionPiece:
+            promotionPiece = promotionPiece[1].lower() if self.getPiece(startX, startY).islower() else \
+                promotionPiece[1].upper()
+        else:
+            promotionPiece = None
 
-                if piece.lower() != 'p':
-                    if file and rank:   # If it is given file and rank in text move
-                        startX, startY = ord(file) - ord('a'), 8 - int(rank)
-                        if startX == x and startY == y:
-                            isUnambiguous = True
-                            break
-                    elif file:          # If it is given file in text move only
-                        startX, startY = ord(file) - ord('a'), y
-                        if startX == x:
-                            isUnambiguous = True
-                            break
-                    elif rank:          # If it is given rank in text move only
-                        startX, startY = x, 8 - int(rank)
-                        if startY == y:
-                            isUnambiguous = True
-                            break
-                    else:               # If there is no file or rank given
-                        unambiguousMoves += 1
-                        startX, startY = x, y
-                else:
-                    unambiguousMoves += 1
-                    startX, startY = x, y
+        return startX, startY, endX, endY, promotionPiece
 
-        if unambiguousMoves == 1 or isUnambiguous:  # If the movement found is unambiguous
+    @staticmethod
+    def isMoveUnambiguous(piecePositions, file, rank):
+        unambiguousPositions = [
+            (x, y) for x, y in piecePositions if
+            (not file or x == ord(file) - ord('a')) and
+            (not rank or y == 8 - int(rank))
+        ]
+
+        startPos = unambiguousPositions[0] if unambiguousPositions else (None, None)
+
+        return len(unambiguousPositions) == 1, startPos[0], startPos[1]
+
+    def parseLongMove(self, moveText):
+        """Long algebraic notation parser (not used)"""
+        pattern = re.compile(r"^([a-h][1-8])([a-h][1-8])([qrbnQRBN]?)$")
+        match = pattern.match(moveText)
+
+        if match:
+            start, end, promotionPiece = match.groups()
+            startX, startY = ord(start[0]) - ord('a'), 8 - int(start[1])
+            endX, endY = ord(end[0]) - ord('a'), 8 - int(end[1])
+
+            if promotionPiece:
+                promotionPiece = promotionPiece.lower() if self.getPiece(startX, startY).islower() \
+                    else promotionPiece.upper()
+            else:
+                promotionPiece = None
+
             return startX, startY, endX, endY, promotionPiece
-        elif unambiguousMoves > 1:                  # If the movement found is ambiguous
-            return self.getError(4)
-
-        return self.getError(5)
+        else:
+            return None
