@@ -13,7 +13,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
 
         # Loading ui from .ui file
-        uiFile = QFile('data/ui/window_ui.ui')
+        uiFile = QFile('data/ui/main_window_ui.ui')
         uiFile.open(QFile.ReadOnly)
         self.ui = QUiLoader().load(uiFile, None)
         self.setCentralWidget(self.ui)
@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
         startDialog = StartDialog(self)
 
         # Starting new game if accepted - clearing scenes and creating new elements and items
-        if startDialog.exec_() == QDialog.Accepted:
+        if startDialog.ui.exec_() == QDialog.Accepted:
             # Stop clocks to avoid errors
             self.clock1.timer.stop()
             self.clock2.timer.stop()
