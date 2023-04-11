@@ -17,7 +17,7 @@
    <item>
     <widget class="QGroupBox" name="timeBlock">
      <property name="title">
-      <string>Gaming Time</string>
+      <string>Time</string>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
@@ -74,7 +74,7 @@
    <item>
     <widget class="QGroupBox" name="modeBlock">
      <property name="title">
-      <string>Game Mode</string>
+      <string>Mode</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>

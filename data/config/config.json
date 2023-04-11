@@ -1,0 +1,23 @@
+{
+    "style": {
+        "board": {
+            "boardStyle": "wood"
+        },
+        "pieces": {
+            "lightSideStyle": "yellow",
+            "darkSideStyle": "blue"
+        }
+    },
+    "initial": {
+        "time": {
+            "hour": 2,
+            "minute": 5,
+            "second": 30
+        },
+        "mode": "AI",
+        "network": {
+            "ip": "127.0.0.0",
+            "port": "5555"
+        }
+    }
+}

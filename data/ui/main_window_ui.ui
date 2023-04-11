@@ -366,20 +366,24 @@
      <height>22</height>
     </rect>
    </property>
-   <widget class="QMenu" name="options">
+   <widget class="QMenu" name="game">
     <property name="title">
      <string>Game</string>
     </property>
     <addaction name="startGame"/>
    </widget>
-   <widget class="QMenu" name="menuSettings">
+   <widget class="QMenu" name="settings">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Settings</string>
     </property>
-    <addaction name="actionLoad_styles"/>
+    <addaction name="saveConfig"/>
+    <addaction name="loadStyle"/>
    </widget>
-   <addaction name="options"/>
-   <addaction name="menuSettings"/>
+   <addaction name="game"/>
+   <addaction name="settings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="startGame">
@@ -387,9 +391,14 @@
     <string>Start new game</string>
    </property>
   </action>
-  <action name="actionLoad_styles">
+  <action name="loadStyle">
    <property name="text">
-    <string>Load styles</string>
+    <string>Load style</string>
+   </property>
+  </action>
+  <action name="saveConfig">
+   <property name="text">
+    <string>Save config</string>
    </property>
   </action>
  </widget>

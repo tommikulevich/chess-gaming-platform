@@ -66,6 +66,30 @@ class Board(QGraphicsScene):
         piece = "P" if side == "light" else "p"
         [self.addItem(Piece(piece, side, x, secondRow, self.tileSize)) for x in range(self.boardSize.width())]
 
+    # ---------------- Configs ----------------
+
+    def applyStyleConfig(self, boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig):
+        tile = [item for item in self.items() if isinstance(item, Tile)][0]
+        tile.changeTileTexture(boardStyleConfig)
+
+        lightPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "light"][0]
+        lightPiece.changePieceTexture(lightSideStyleConfig, "light")
+
+        darkPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "dark"][0]
+        darkPiece.changePieceTexture(darkSideStyleConfig, "dark")
+
+    def getStyleConfig(self):
+        tile = [item for item in self.items() if isinstance(item, Tile)][0]
+        boardStyleConfig = tile.boardStyleDark.split("/")[2]
+
+        lightPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "light"][0]
+        lightSideStyleConfig = lightPiece.pieceTheme
+
+        darkPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "dark"][0]
+        darkSideStyleConfig = darkPiece.pieceTheme
+
+        return boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig
+
     # ---------------- Game components ----------------
 
     def endPlayerMove(self, event, player):
