@@ -48,23 +48,39 @@ class Board(QGraphicsScene):
     def createSide(self, side, firstRow, secondRow):
         piece = "R" if side == "light" else "r"
         self.addItem(Piece(piece, side, 0, firstRow, self.tileSize))
+        self.logic.setPiece(0, firstRow, piece)
+
         piece = "N" if side == "light" else "n"
         self.addItem(Piece(piece, side, 1, firstRow, self.tileSize))
+        self.logic.setPiece(1, firstRow, piece)
+
         piece = "B" if side == "light" else "b"
         self.addItem(Piece(piece, side, 2, firstRow, self.tileSize))
+        self.logic.setPiece(2, firstRow, piece)
+
         piece = "Q" if side == "light" else "q"
         self.addItem(Piece(piece, side, 3, firstRow, self.tileSize))
+        self.logic.setPiece(3, firstRow, piece)
+
         piece = "K" if side == "light" else "k"
         self.addItem(Piece(piece, side, 4, firstRow, self.tileSize))
+        self.logic.setPiece(4, firstRow, piece)
+
         piece = "B" if side == "light" else "b"
         self.addItem(Piece(piece, side, 5, firstRow, self.tileSize))
+        self.logic.setPiece(5, firstRow, piece)
+
         piece = "N" if side == "light" else "n"
         self.addItem(Piece(piece, side, 6, firstRow, self.tileSize))
+        self.logic.setPiece(6, firstRow, piece)
+
         piece = "R" if side == "light" else "r"
         self.addItem(Piece(piece, side, 7, firstRow, self.tileSize))
+        self.logic.setPiece(7, firstRow, piece)
 
         piece = "P" if side == "light" else "p"
         [self.addItem(Piece(piece, side, x, secondRow, self.tileSize)) for x in range(self.boardSize.width())]
+        [self.logic.setPiece(x, secondRow, piece) for x in range(self.boardSize.width())]
 
     # ---------------- Configs ----------------
 

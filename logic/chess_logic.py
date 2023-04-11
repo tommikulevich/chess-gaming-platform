@@ -6,21 +6,14 @@ import itertools
 class ChessLogic:
     def __init__(self):
         # Chess logic parameters
-        self.textBoard = np.array([
-            ["r", "n", "b", "q", "k", "b", "n", "r"],
-            ["p", "p", "p", "p", "p", "p", "p", "p"],
-            [".", ".", ".", ".", ".", ".", ".", "."],
-            [".", ".", ".", ".", ".", ".", ".", "."],
-            [".", ".", ".", ".", ".", ".", ".", "."],
-            [".", ".", ".", ".", ".", ".", ".", "."],
-            ["P", "P", "P", "P", "P", "P", "P", "P"],
-            ["R", "N", "B", "Q", "K", "B", "N", "R"]
-        ])
+        self.textBoard = np.full((8, 8), ".", dtype=str)
+        self.moveHistory = []
 
         self.activePlayer = None
         self.playerMoved = False
-
         self.check = False
+
+        self.promotionPiece = None
 
         self.enPassantTarget = None
         self.enPassantPerformed = False
@@ -115,12 +108,24 @@ class ChessLogic:
                     self.setPiece(*self.enPassantTarget, '.')
                     self.enPassantPerformed = True
 
-        self.setPiece(newX, newY, piece)
-        self.setPiece(startX, startY, '.')
-
         # If en passant is not performed
         if not self.enPassantPerformed:
             self.enPassantTarget = (newX, newY) if piece.lower() == 'p' and abs(newY - startY) == 2 else None
+
+        # Converting move coordinates to the move according to SAN notation
+        sanMove = self.coordsToSAN(startX, startY, newX, newY)
+
+        # Performing move
+        self.setPiece(newX, newY, piece)
+        self.setPiece(startX, startY, '.')
+
+        # Add additional chars to move in SAN
+        if self.isInCheck(not self.activePlayer == 'light')[2]:
+            sanMove += '#' if self.isCheckmate(not self.activePlayer == 'light') else '+'
+
+        # Adding move to the history array
+        self.moveHistory.append(sanMove)
+        print(self.moveHistory[-1])
 
     def testMovePiece(self, startX, startY, newX, newY):
         piece = self.getPiece(startX, startY)
@@ -197,7 +202,7 @@ class ChessLogic:
         # If en passant is possible
         if self.enPassantTarget is not None:
             enX, enY = self.enPassantTarget
-            if y == enY and (x - 1 == enX or x + 1 == enX):
+            if y == enY and (x - 1 == enX or x + 1 == enX) and 0 <= enY + moveDir < 8:
                 regularMoves.append([enX, enY + moveDir])
 
         captureMoves = [[x + dx, y + moveDir] for dx in (-1, 1)
@@ -321,8 +326,9 @@ class ChessLogic:
 
         return castlingPerformed, castlingRookPos
 
-    def isPromotion(self, x, y):
-        piece = self.getPiece(x, y)
+    def isPromotion(self, x, y, x0=None, y0=None):
+        piece = self.getPiece(x, y) if (x0, y0) == (None, None) else self.getPiece(x0, y0)
+
         if (piece == "P" and y == 0) or (piece == "p" and y == 7):
             return True
 
@@ -331,6 +337,7 @@ class ChessLogic:
     def promotePawn(self, x, y, newPieceName):
         piece = self.getPiece(x, y)
         newPieceName = newPieceName.upper() if piece.isupper() else newPieceName.lower()
+        self.promotionPiece = newPieceName
 
         self.setPiece(x, y, newPieceName)
 
@@ -369,7 +376,7 @@ class ChessLogic:
                    or self.isSquareAttacked(x + 1, y, isLight) \
                    or self.isSquareAttacked(x + 2, y, isLight)
 
-    # ---------------- Algebraic notation parsing ----------------
+    # ---------------- Algebraic notation block ----------------
 
     def parseMove(self, moveText):
         # Removing spaces from text
@@ -448,22 +455,42 @@ class ChessLogic:
 
         return len(unambiguousPositions) == 1, startPos[0], startPos[1]
 
-    def parseLongMove(self, moveText):
-        """Long algebraic notation parser (not used)"""
-        pattern = re.compile(r"^([a-h][1-8])([a-h][1-8])([qrbnQRBN]?)$")
-        match = pattern.match(moveText)
+    def coordsToSAN(self, startX, startY, newX, newY):
+        piece = self.getPiece(startX, startY)
+        pieceType = piece.upper()
 
-        if match:
-            start, end, promotionPiece = match.groups()
-            startX, startY = ord(start[0]) - ord('a'), 8 - int(start[1])
-            endX, endY = ord(end[0]) - ord('a'), 8 - int(end[1])
+        pieceLetter = '' if pieceType == 'P' else pieceType
+        capture = 'x' if self.getPiece(newX, newY) != '.' or self.enPassantPerformed else ''
+        file = chr(ord('a') + startX)
+        rank = str(8 - startY)
+        endSquare = chr(ord('a') + newX) + str(8 - newY)
 
-            if promotionPiece:
-                promotionPiece = promotionPiece.lower() if self.getPiece(startX, startY).islower() \
-                    else promotionPiece.upper()
-            else:
-                promotionPiece = None
+        if pieceType == 'K' and abs(newX - startX) == 2:
+            return 'O-O' if newX > startX else 'O-O-O'
 
-            return startX, startY, endX, endY, promotionPiece
+        if pieceType == 'P':
+            sanMove = file + capture + endSquare if capture else endSquare
         else:
-            return None
+            possiblePositions = [(x, y) for x, y in self.findPiecesXY(piece) if [newX, newY] in self.getLegalMoves(x, y)]
+
+            if len(possiblePositions) > 1:  # Unambiguous moves
+                sameFilePositions = [pos for pos in possiblePositions if pos[0] == startX]
+                sameRankPositions = [pos for pos in possiblePositions if pos[1] == startY]
+
+                if len(sameFilePositions) == 1:
+                    pieceLetter += file
+                elif len(sameRankPositions) == 1:
+                    pieceLetter += rank
+                else:
+                    pieceLetter += file
+                    pieceLetter += rank
+
+            sanMove = pieceLetter + capture + endSquare
+
+        if self.enPassantPerformed:
+            sanMove += 'ep'
+
+        if self.promotionPiece:
+            sanMove += '=' + self.promotionPiece.upper()
+
+        return sanMove
