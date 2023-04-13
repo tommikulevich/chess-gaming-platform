@@ -32,7 +32,9 @@ class Piece(QGraphicsPixmapItem):
         self.pieceDarkSideStyle = f":/pieces/dark/{self.pieceName.lower()}"
         self.loadTexture()
 
-    # ---------------- Texture components ----------------
+    # ------------------
+    # Texture components
+    # ------------------
 
     def loadTexture(self):
         piecePixmap = QPixmap(self.pieceStyle)
@@ -44,18 +46,18 @@ class Piece(QGraphicsPixmapItem):
         newStyle = f":/pieces/{self.pieceTheme}/{self.pieceName.lower()}"
 
         # Check if the player tries to set the same color as the opponent
-        conflict = any((side == "light" and newStyle == item.pieceDarkSideStyle) or
-                       (side == "dark" and newStyle == item.pieceLightSideStyle)
-                       for item in pieceItems)
+        isConflict = any((side == "light" and newStyle == item.pieceDarkSideStyle) or
+                         (side == "dark" and newStyle == item.pieceLightSideStyle)
+                         for item in pieceItems)
 
-        if conflict:
+        if isConflict:
             self.showColorConflictWindow()
             return
 
         [self.updatePiecesStyle(piece, side, newStyle) for piece in pieceItems]
 
     def updatePiecesStyle(self, item, side, newStyle):
-        if side != item.side:   # If the piece is of another player
+        if side != item.side:   # Check if the piece is of another player
             return
 
         item.pieceTheme = self.pieceTheme
@@ -114,7 +116,9 @@ class Piece(QGraphicsPixmapItem):
 
         menu.exec_(event.screenPos())
 
-    # ---------------- Additional windows ----------------
+    # ------------------
+    # Additional windows
+    # ------------------
 
     def showColorConflictWindow(self):
         msg = QMessageBox(self.scene().mainWindow)
@@ -153,24 +157,26 @@ class Piece(QGraphicsPixmapItem):
         layout.addWidget(pieceLabel, index, 0)
         layout.addWidget(button, index, 1)
 
-    # ---------------- Game components ----------------
+    # ---------------
+    # Game components
+    # ---------------
 
     def xyToGrid(self, x, y):
-        """Converts coordinates (x, y) to grid coordinates"""
+        # Convert coordinates (x, y) to grid coordinates
         gridX = round(x / self.pieceSize)
         gridY = round(y / self.pieceSize)
 
         return gridX, gridY
 
     def gridToXY(self, gridX, gridY):
-        """Converts grid coordinates to a QPointF object"""
+        # Convert grid coordinates to a QPointF object
         x = gridX * self.pieceSize
         y = gridY * self.pieceSize
 
         return QPointF(x, y)
 
     def promotePawnInScene(self, newPieceName, newPieceStyle):
-        # Changing piece name and texture
+        # Change piece name and texture
         self.pieceName = newPieceName.lower() if self.pieceName.islower() else newPieceName.upper()
         self.scene().logic.promotionPiece = self.pieceName
         self.pieceStyle = newPieceStyle
@@ -178,11 +184,11 @@ class Piece(QGraphicsPixmapItem):
         self.update()
 
     def playerMove(self, startX, startY, endX, endY, text=None):
-        if [endX, endY] not in self.legalMoves:     # If a player wants to make an illegal move
+        if [endX, endY] not in self.legalMoves:     # Check if a player wants to make an illegal move
             self.setPos(self.startPos)
             return
 
-        # If promotion expected
+        # Check if promotion expected
         if self.scene().logic.isPromotion(endX, endY, startX, startY):
             if text is None:
                 self.showPromotionDialog()
@@ -190,15 +196,15 @@ class Piece(QGraphicsPixmapItem):
                 promotionPiece = text
                 self.promotePawnInScene(promotionPiece, f":/pieces/{self.pieceTheme}/{promotionPiece.lower()}")
 
-        # Performing move in logic
+        # Perform move in logic
         self.scene().logic.movePiece(startX, startY, endX, endY)
 
+        # Check and perform the promotion
         if self.scene().logic.isPromotion(endX, endY):
             promotionPiece = self.scene().logic.promotionPiece
             self.scene().logic.promotePawn(endX, endY, promotionPiece)
             self.scene().logic.promotionPiece = None
 
-        # Checking and performing the promotion
         if self.scene().logic.isPromotion(endX, endY):
             if text is None:
                 self.showPromotionDialog()
@@ -206,7 +212,7 @@ class Piece(QGraphicsPixmapItem):
                 promotionPiece = text
                 self.promotePawnInScene(promotionPiece, f":/pieces/{self.pieceTheme}/{promotionPiece.lower()}")
 
-        # Checking and performing the castling
+        # Check and perform the castling
         castlingPerformed = self.scene().logic.isCastling()
         if castlingPerformed[0]:
             rookOldX, rookNewX = castlingPerformed[1]
@@ -215,7 +221,7 @@ class Piece(QGraphicsPixmapItem):
 
             rookItem[0].setPos(self.gridToXY(rookNewX, endY))
 
-        # Checking and performing en passant
+        # Check and perform en passant
         enPassantPerformed = self.scene().logic.isEnPassant()
         if enPassantPerformed[0]:
             x, y = enPassantPerformed[1]
@@ -225,42 +231,44 @@ class Piece(QGraphicsPixmapItem):
             field = QRectF(self.gridToXY(endX, endY).x(), self.gridToXY(endX, endY).y(), self.pieceSize, self.pieceSize)
             targetItem = [item for item in self.scene().items(field) if (isinstance(item, Piece) and item is not self)]
 
-        # Checking and performing capture
+        # Check and perform capture
         if targetItem:
             self.scene().removeItem(targetItem[0])
 
-        # Setting new position. End of the player move
+        # Set new position. End of the player move
         self.setPos(self.gridToXY(endX, endY))
         self.scene().logic.playerMoved = True
 
-        # Changing tile texture under king piece if he is in check
+        # Change tile texture under king piece if he is in check
         self.changeCheckKingTexture(startX, startY, *self.scene().logic.isCheck("light"))
         self.changeCheckKingTexture(startX, startY, *self.scene().logic.isCheck("dark"))
 
-        # Checking the checkmate
+        # Check the checkmate
         isCheckmate = self.scene().logic.isCheckmate(not self.scene().logic.activePlayer == "light")
         if isCheckmate:
             self.scene().gameOver()
 
-    # ---------------- Clicking and dragging events ----------------
+    # ----------------------------
+    # Clicking and dragging events
+    # ----------------------------
 
     def mousePressEvent(self, event):
         if event.button() != Qt.LeftButton:
             return
 
-        self.scene().errorLabel.clear()     # Clearing error label
+        self.scene().errorLabel.clear()     # Clear error label
 
-        # If the game has not started or is over
+        # Check if the game has not started or is over
         if self.scene().logic.activePlayer is None:
             self.scene().errorLabel.setText(self.scene().logic.getError(7))
             return
 
-        # If a player tries to move an opponent's piece
+        # Check if the player tries to move an opponent's piece
         if self.scene().logic.activePlayer != self.side:
             self.scene().errorLabel.setText(self.scene().logic.getError(2))
             return
 
-        # If the player has already made a move
+        # Check if the player has already made a move
         if self.scene().logic.playerMoved:
             self.scene().errorLabel.setText(self.scene().logic.getError(1))
             return
@@ -270,7 +278,7 @@ class Piece(QGraphicsPixmapItem):
         self.startPos = self.pos()
         startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
 
-        # If legalMoves is empty - generate legal moves
+        # Check if legalMoves is empty - generate legal moves
         if not self.legalMoves:
             self.legalMoves = self.scene().logic.getLegalMoves(startX, startY)
 
@@ -278,37 +286,37 @@ class Piece(QGraphicsPixmapItem):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # If the new game has not started or a player tries to move an opponent's piece
+        # Check if the new game has not started or a player tries to move an opponent's piece
         if self.scene().logic.activePlayer is None or self.scene().logic.activePlayer != self.side:
             return
 
-        # If the player has already made a move
+        # Check if the player has already made a move
         if self.scene().logic.playerMoved:
             return
 
-        # Making the piece a little transparent
+        # Make the piece a little transparent
         self.setOpacity(0.7)
 
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        # If the new game has not started or a player tries to move an opponent's piece
+        # Check if the new game has not started or a player tries to move an opponent's piece
         if self.scene().logic.activePlayer is None or self.scene().logic.activePlayer != self.side:
             return
 
-        # If the player has already made a move
+        # Check if the player has already made a move
         if self.scene().logic.playerMoved:
             return
 
         self.setCursor(Qt.OpenHandCursor)
 
-        # Performing move
+        # Perform move
         newPos = self.pos()
         endX, endY = self.xyToGrid(newPos.x(), newPos.y())
         startX, startY = self.xyToGrid(self.startPos.x(), self.startPos.y())
         self.playerMove(startX, startY, endX, endY)
 
-        # Changing back normal piece opacity and tile textures
+        # Change back normal piece opacity and tile textures
         self.setOpacity(1)
         self.changeValidTileTexture(False)
 

@@ -15,13 +15,13 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QGroupBox" name="timeBlock">
+    <widget class="QGroupBox" name="gameTimeBlock">
      <property name="title">
       <string>Time</string>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QSpinBox" name="timeHourSpinBox">
+       <widget class="QSpinBox" name="timeHour">
         <property name="alignment">
          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
         </property>
@@ -34,7 +34,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QSpinBox" name="timeMinSpinBox">
+       <widget class="QSpinBox" name="timeMin">
         <property name="alignment">
          <set>Qt::AlignCenter</set>
         </property>
@@ -50,7 +50,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QSpinBox" name="timeSecSpinBox">
+       <widget class="QSpinBox" name="timeSec">
         <property name="alignment">
          <set>Qt::AlignCenter</set>
         </property>
@@ -95,7 +95,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="modeAI">
+       <widget class="QRadioButton" name="modeAi">
         <property name="text">
          <string>AI</string>
         </property>
@@ -121,7 +121,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="netParam">
+       <widget class="QLineEdit" name="netParams">
         <property name="inputMethodHints">
          <set>Qt::ImhDialableCharactersOnly</set>
         </property>
@@ -182,7 +182,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="buttonOK">
+    <widget class="QDialogButtonBox" name="ok">
      <property name="standardButtons">
       <set>QDialogButtonBox::Ok</set>
      </property>

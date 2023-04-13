@@ -1,6 +1,8 @@
 import json
 import os
 import re
+import sqlite3
+from xml.etree.ElementTree import parse
 from PySide2.QtCore import QFile
 from PySide2.QtGui import QIcon
 from PySide2.QtUiTools import QUiLoader
@@ -12,182 +14,291 @@ class StartDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Loading ui from .ui file
-        uiFile = QFile('data/ui/start_dialog_ui.ui')
+        # UI initializing and configuration
+        self.ui = self.initUI('data/ui/start_dialog_ui.ui', ':/pieces/yellow/k')
+
+        # UI components initializing and configuration
+        self.okButton = self.initOkButton()
+        self.timeSpinBoxes = self.initGameTimeBlock()
+        self.gameModesButtonGroup = self.initGameModeBlock()
+        self.netParamsLineEdit = self.initNetworkBlock()
+        self.statusLabel = self.initOptionalBlock()
+
+        # Styles and history parameters
+        self.stylesFromConfig = {"boardStyle": None, "lightSideStyle": None, "darkSideStyle": None}
+        self.historyFromFile = {"movesHistory": [], "clock1History": [], "clock2History": []}
+
+    # -------------------
+    # Window initializing
+    # -------------------
+
+    @staticmethod
+    def initUI(uiPath, uiIcon):
+        uiFile = QFile(uiPath)
         uiFile.open(QFile.ReadOnly)
-        self.ui = QUiLoader().load(uiFile, None)
+        ui = QUiLoader().load(uiFile, None)     # Loading ui from .ui file
+        ui.setWindowIcon(QIcon(uiIcon))
         uiFile.close()
 
-        # Window settings
-        self.ui.setWindowIcon(QIcon(":/pieces/yellow/k"))
+        return ui
 
-        # --- Finding and configuring window components ---
+    def initOkButton(self):
+        okButton = self.ui.findChild(QDialogButtonBox, 'ok')
+        okButton.accepted.connect(self.ui.accept)
+        okButton.rejected.connect(self.ui.reject)
+        okButton = okButton.button(QDialogButtonBox.Ok)
 
-        # OK Button
-        self.buttonOK = self.ui.findChild(QDialogButtonBox, 'buttonOK')
-        self.buttonOK.accepted.connect(self.ui.accept)
-        self.buttonOK.rejected.connect(self.ui.reject)
+        return okButton
 
-        # Gaming time block
-        self.timeHour = self.ui.findChild(QSpinBox, 'timeHourSpinBox')
-        self.timeMin = self.ui.findChild(QSpinBox, 'timeMinSpinBox')
-        self.timeSec = self.ui.findChild(QSpinBox, 'timeSecSpinBox')
+    def initGameTimeBlock(self):
+        timeHourSpinBox = self.ui.findChild(QSpinBox, 'timeHour')
+        timeMinSpinBox = self.ui.findChild(QSpinBox, 'timeMin')
+        timeSecSpinBox = self.ui.findChild(QSpinBox, 'timeSec')
 
-        # Game mode block
-        self.modeOnePlayer = self.ui.findChild(QRadioButton, 'modeOnePlayer')
-        self.modeTwoPlayers = self.ui.findChild(QRadioButton, 'modeTwoPlayers')
-        self.modeAI = self.ui.findChild(QRadioButton, 'modeAI')
+        return timeHourSpinBox, timeMinSpinBox, timeSecSpinBox
 
-        self.gameModes = QButtonGroup()
-        self.gameModes.addButton(self.modeOnePlayer, 1)
-        self.gameModes.addButton(self.modeTwoPlayers, 2)
-        self.gameModes.addButton(self.modeAI, 3)
+    def initGameModeBlock(self):
+        modeOnePlayerRadioButton = self.ui.findChild(QRadioButton, 'modeOnePlayer')
+        modeTwoPlayersRadioButton = self.ui.findChild(QRadioButton, 'modeTwoPlayers')
+        modeAiRadioButton = self.ui.findChild(QRadioButton, 'modeAi')
 
-        # Network block
-        self.netParam = self.ui.findChild(QLineEdit, 'netParam')\
+        gameModesButtonGroup = QButtonGroup()
+        gameModesButtonGroup.addButton(modeOnePlayerRadioButton, 1)
+        gameModesButtonGroup.addButton(modeTwoPlayersRadioButton, 2)
+        gameModesButtonGroup.addButton(modeAiRadioButton, 3)
 
-        # Optional block
-        self.jsonButton = self.ui.findChild(QPushButton, 'jsonButton')
-        self.historyButton = self.ui.findChild(QPushButton, 'historyButton')
-        self.statusLabel = self.ui.findChild(QLabel, 'statusLabel')
-        self.jsonButton.clicked.connect(self.loadConfig)
-        self.historyButton.clicked.connect(self.loadHistory)
+        return gameModesButtonGroup
 
-        # --- Style parameters (json) ---
-        self.boardStyleConfig = None
-        self.lightSideStyleConfig = None
-        self.darkSideStyleConfig = None
+    def initNetworkBlock(self):
+        netParamsLineEdit = self.ui.findChild(QLineEdit, 'netParams')
+
+        return netParamsLineEdit
+
+    def initOptionalBlock(self):
+        jsonButton = self.ui.findChild(QPushButton, 'jsonButton')
+        historyButton = self.ui.findChild(QPushButton, 'historyButton')
+        statusLabel = self.ui.findChild(QLabel, 'statusLabel')
+        jsonButton.clicked.connect(self.loadConfig)
+        historyButton.clicked.connect(self.loadHistory)
+
+        return statusLabel
+
+    # ----------------------------------------------
+    # Getting options, history and config parameters
+    # ----------------------------------------------
 
     def getGameTime(self):
-        return self.timeHour.value(), self.timeMin.value(), self.timeSec.value()
+        return tuple(spinBox.value() for spinBox in self.timeSpinBoxes)
 
-    def getMode(self):
-        return self.gameModes.checkedButton().text()
+    def getGameMode(self):
+        return self.gameModesButtonGroup.checkedButton().text()
 
     def getNetParams(self):
-        return self.netParam.text().split(':')
+        return self.netParamsLineEdit.text().split(':')
 
-    def getStyles(self):
-        return self.boardStyleConfig, self.lightSideStyleConfig, self.darkSideStyleConfig
+    def getStylesFromConfig(self):
+        return tuple(self.stylesFromConfig.values())
+
+    def getHistoryFromFiles(self):
+        return tuple(self.historyFromFile.values())
+
+    # --------------------------
+    # Loading config and history
+    # --------------------------
 
     def loadConfig(self):
+        # Select config file (json)
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        configPath, _ = QFileDialog.getOpenFileName(self, "Open Config File", "data/config", "JSON Files (*.json)", options=options)
+        configPath, _ = QFileDialog.getOpenFileName(self, "Open Config File", "data/config",
+                                                    "JSON Files (*.json)", options=options)
 
-        if os.path.isfile(configPath):
-            with open(configPath, "r") as file:
-                config = json.load(file)
-
-            errors = self.validateConfig(config)    # Config parameters validation
-
-            if not errors:
-                initial = config.get("initial", {})
-                style = config.get("style", {})
-
-                # Time configuration
-                timeConfig = initial.get("time", {})
-                self.timeHour.setValue(timeConfig.get("hour", 0))
-                self.timeMin.setValue(timeConfig.get("minute", 0))
-                self.timeSec.setValue(timeConfig.get("second", 0))
-
-                # Mode configuration
-                mode = initial.get("mode", "1 player")
-                if mode == "1 player":
-                    self.modeOnePlayer.setChecked(True)
-                elif mode == "2 players":
-                    self.modeTwoPlayers.setChecked(True)
-                elif mode == "AI":
-                    self.modeAI.setChecked(True)
-
-                # Network configuration
-                netConfig = initial.get("network", {})
-                ip = netConfig.get("ip", "")
-                port = netConfig.get("port", "")
-                self.netParam.setText(f"{ip}:{port}")
-
-                # Style configuration
-                board = style.get("board", {})
-                self.boardStyleConfig = board.get("boardStyle", "standard")
-
-                pieces = style.get("pieces", {})
-                self.lightSideStyleConfig = pieces.get("lightSideStyle", "light")
-                self.darkSideStyleConfig = pieces.get("darkSideStyle", "dark")
-
-                # Updating status
-                self.statusLabel.setText("Status: Config loaded successfully!")
-                self.statusLabel.setStyleSheet("color:rgb(0, 170, 0)")
-            else:
-                self.statusLabel.setText("Status: Invalid config parameters (" + ", ".join(errors) + ").\nLoading failed!")
-                self.statusLabel.setStyleSheet("color:rgb(227, 11, 92)")
-        else:
+        # Check if the config file exists
+        if not os.path.isfile(configPath):
             self.statusLabel.setText("Status: Config file not found or not selected!")
             self.statusLabel.setStyleSheet("color:rgb(227, 11, 92)")
+            return
+
+        # Open config file
+        with open(configPath, "r") as file:
+            config = json.load(file)
+
+        # Validate config parameters
+        errors = self.validateConfig(config)
+        if errors:
+            self.statusLabel.setText("Status: Invalid config parameters (" + ", ".join(errors) + ").\nLoading failed!")
+            self.statusLabel.setStyleSheet("color:rgb(227, 11, 92)")
+            return
+
+        # Getting parameters
+        initialBlock = config.get("initial", {})
+        styleBlock = config.get("style", {})
+
+        # Time configuration
+        timeConfig = initialBlock.get("time", {})
+        self.timeSpinBoxes[0].setValue(timeConfig.get("hour", 0))
+        self.timeSpinBoxes[1].setValue(timeConfig.get("minute", 0))
+        self.timeSpinBoxes[2].setValue(timeConfig.get("second", 0))
+
+        # Mode configuration
+        modeConfig = initialBlock.get("mode", "1 player")
+        modeRadioButtons = {
+            "1 player": self.gameModesButtonGroup.button(1),
+            "2 players": self.gameModesButtonGroup.button(2),
+            "AI": self.gameModesButtonGroup.button(3)
+        }
+        if modeConfig in modeRadioButtons:
+            modeRadioButtons[modeConfig].setChecked(True)
+
+        # Network configuration
+        netConfig = initialBlock.get("network", {})
+        ip = netConfig.get("ip", "")
+        port = netConfig.get("port", "")
+        self.netParamsLineEdit.setText(f"{ip}:{port}")
+
+        # Style configuration
+        boardBlock = styleBlock.get("board", {})
+        self.stylesFromConfig["boardStyle"] = boardBlock.get("boardStyle", "standard")
+
+        piecesBlock = styleBlock.get("pieces", {})
+        self.stylesFromConfig["lightSideStyle"] = piecesBlock.get("lightSideStyle", "light")
+        self.stylesFromConfig["darkSideStyle"] = piecesBlock.get("darkSideStyle", "dark")
+
+        # Update status
+        self.statusLabel.setText("Status: Config loaded successfully!")
+        self.statusLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
     def validateConfig(self, config):
         errors = []
-        initial = config.get("initial", {})
-        style = config.get("style", {})
 
-        # Checking time values
-        timeConfig = initial.get("time", {})
+        initialBlock = config.get("initial", {})
+        styleBlock = config.get("style", {})
+
+        # Check game time values
+        timeConfig = initialBlock.get("time", {})
         hour = timeConfig.get("hour", 0)
         minute = timeConfig.get("minute", 0)
         second = timeConfig.get("second", 0)
+        timeValues = (hour, minute, second)
 
-        if not (self.timeHour.minimum() <= hour <= self.timeHour.maximum() and
-                self.timeMin.minimum() <= minute <= self.timeMin.maximum() and
-                self.timeSec.minimum() <= second <= self.timeSec.maximum()):
+        if not all(self.timeSpinBoxes[i].minimum() <= timeValues[i] <= self.timeSpinBoxes[i].maximum() for i in range(3)):
             errors.append("time")
 
-        # Checking mode
-        mode = initial.get("mode", "1 player")
-        if mode not in ["1 player", "2 players", "AI"]:
+        # Check game mode
+        modeConfig = initialBlock.get("mode", "1 player")
+        if modeConfig not in ["1 player", "2 players", "AI"]:
             errors.append("mode")
 
-        # Checking network params
-        netConfig = initial.get("network", {})
+        # Check network params
+        netConfig = initialBlock.get("network", {})
 
+        # 1) IP
         ip = netConfig.get("ip", "")
         ipPattern = re.compile(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
         matchIP = ipPattern.match(ip)
 
         if matchIP:
             groups = matchIP.groups()
-            valid = all(0 <= int(group) <= 255 for group in groups)
 
-            if not valid:
+            if not all(0 <= int(group) <= 255 for group in groups):
                 errors.append("ip")
         else:
             errors.append("ip")
 
+        # 2) Port
         port = netConfig.get("port", "")
         portPattern = re.compile(r'^\d{1,5}$')
         matchPort = portPattern.match(port)
 
         if matchPort:
-            valid = 0 <= int(port) <= 65535
-
-            if not valid:
+            if not 0 <= int(port) <= 65535:
                 errors.append("port")
         else:
             errors.append("port")
 
-        # Checking style parameters
-        board = style.get("board", {})
-        boardStyle = board.get("boardStyle", "standard")
+        # Check style parameters
+        # 1) Board
+        boardBlock = styleBlock.get("board", {})
+        boardStyle = boardBlock.get("boardStyle", "standard")
         if boardStyle not in ["standard", "rock", "wood"]:
             errors.append("board style")
 
-        pieces = style.get("pieces", {})
-        lightSideStyle = pieces.get("lightSideStyle", "light")
-        darkSideStyle = pieces.get("darkSideStyle", "dark")
+        # 2) Pieces
+        piecesBlock = styleBlock.get("pieces", {})
+        lightSideStyle = piecesBlock.get("lightSideStyle", "light")
+        darkSideStyle = piecesBlock.get("darkSideStyle", "dark")
         if lightSideStyle not in ["light", "blue", "green", "red", "yellow"] \
-                or darkSideStyle not in ["dark", "blue", "green", "red", "yellow"]\
+                or darkSideStyle not in ["dark", "blue", "green", "red", "yellow"] \
                 or lightSideStyle == darkSideStyle:
             errors.append("pieces style")
 
         return errors
 
     def loadHistory(self):
-        pass
+        # Select file with history (xml, db)
+        historyPath, _ = QFileDialog.getOpenFileName(self, "Load History", "data/history/",
+                                                     "History Files (*.xml *.db *.sqlite)")
+        # Check if no file was selected
+        if not historyPath:
+            return
+
+        # Get history data from files
+        if historyPath.endswith('.db'):
+            movesHistory, clock1History, clock2History = self.sqliteLoadHistory(historyPath)
+            self.historyFromFile["movesHistory"] = movesHistory
+            self.historyFromFile["clock1History"] = clock1History
+            self.historyFromFile["clock2History"] = clock2History
+        elif historyPath.endswith('.xml'):
+            movesHistory, clock1History, clock2History = self.xmlLoadHistory(historyPath)
+            self.historyFromFile["movesHistory"] = movesHistory
+            self.historyFromFile["clock1History"] = clock1History
+            self.historyFromFile["clock2History"] = clock2History
+        else:
+            self.statusLabel.setText("Status: History file has invalid type, not found or not selected!")
+            self.statusLabel.setStyleSheet("color:rgb(227, 11, 92)")
+
+            return
+
+        # Change OK button text
+        self.okButton.setText("Start playback")
+
+        # Update status label
+        self.statusLabel.setText("Status: History loaded successfully!")
+        self.statusLabel.setStyleSheet("color:rgb(0, 170, 0)")
+
+    def xmlLoadHistory(self, xmlPath):
+        # Parse XML file
+        tree = parse(xmlPath)
+        root = tree.getroot()
+        movesElem = root.find('moves')
+
+        # Extract moves and end times
+        allHistory = [(moveElem.text, moveElem.get('end_time', '')) for moveElem in movesElem.findall('move')]
+
+        return self.splitAllHistory(allHistory)
+
+    def sqliteLoadHistory(self, dbPath):
+        # Connect to database
+        conn = sqlite3.connect(dbPath)
+        cursor = conn.cursor()
+
+        # Read data from history table
+        cursor.execute('SELECT move, end_time FROM history')
+        allHistory = cursor.fetchall()
+
+        conn.close()
+
+        return self.splitAllHistory(allHistory)
+
+    @staticmethod
+    def splitAllHistory(allHistory):
+        # Split allHistory into separate lists
+        times = [tuple(map(int, time.split(':'))) if time else None for _, time in allHistory]
+        clock1History = []
+        clock2History = []
+
+        movesHistory = [move for move, _ in allHistory]
+        clock1History.extend([time for i, time in enumerate(times) if i % 2 == 0 and time is not None])
+        clock2History.extend([time for i, time in enumerate(times) if i % 2 == 1 and time is not None])
+
+        return movesHistory, clock1History, clock2History

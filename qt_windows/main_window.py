@@ -1,12 +1,16 @@
 import json
 import os
-from PySide2.QtCore import QFile
+import sqlite3
+from xml.etree.ElementTree import Element, SubElement, tostring
+from xml.dom import minidom
+from PySide2.QtCore import QFile, QEvent
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QLineEdit, QAction, QDialog, QLabel, QStyle, \
-    QFileDialog, QMenu
-from PySide2.QtGui import QBrush, QPixmap, QIcon
+    QFileDialog, QMenu, QPushButton, QTextEdit
+from PySide2.QtGui import QBrush, QPixmap, QIcon, QTransform
 
 from qt_windows.start_dialog import StartDialog
+from qt_windows.playback_dialog import PlaybackDialog
 from board.board_scene import Board
 from clock.clock_item import Clock
 
@@ -16,152 +20,232 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.startDialog = None
 
-        # Loading ui from .ui file
-        uiFile = QFile('data/ui/main_window_ui.ui')
-        uiFile.open(QFile.ReadOnly)
-        self.ui = QUiLoader().load(uiFile, None)
-        self.setCentralWidget(self.ui)
-        uiFile.close()
+        # UI initializing and configuration
+        self.initUI('data/ui/main_window_ui.ui', ':/pieces/yellow/k', 'Chess Gaming Platform')
 
-        # Window settings
-        self.setWindowIcon(QIcon(":/pieces/yellow/k"))
-        self.setWindowTitle("Chess Game")
+        # UI components initializing and configuration
+        self.errorLabel, self.playerInputLineEdit, self.enterMoveButton, self.historyBlockTextEdit = self.initTextElems()
+        self.boardView, self.clock1View, self.clock2View = self.initViews()
+        self.saveHistoryMenu = self.initGameMenu()
+        self.settingsMenu = self.initSettingsMenu()
 
-        # Finding and configuring window elements
-        self.errorLabel = self.findChild(QLabel, 'errors')
-        self.playerInput = self.findChild(QLineEdit, 'input')
-        self.boardView = self.findChild(QGraphicsView, 'board')
-        self.clock1View = self.findChild(QGraphicsView, 'clock1')
-        self.clock2View = self.findChild(QGraphicsView, 'clock2')
-        self.startGameAction = self.findChild(QAction, 'startGame')
-        self.settingsMenu = self.findChild(QMenu, 'settings')
-        self.startGameAction.triggered.connect(self.startNewGame)
-        self.startGameAction.setIcon(self.style().standardIcon(QStyle.SP_ArrowForward))
-        self.saveConfigAction = self.findChild(QAction, 'saveConfig')
-        self.saveConfigAction.triggered.connect(self.saveConfig)
-        self.saveConfigAction.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
-        self.loadStyleAction = self.findChild(QAction, 'loadStyle')
-        self.loadStyleAction.triggered.connect(self.loadStyleFromConfig)
-        self.loadStyleAction.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-
-        # Creating scenes
-        self.board = None
-        self.clock1 = None
-        self.clock2 = None
+        # Create scenes
+        self.board, self.clock1, self.clock2 = None, None, None
         self.createScenes()
 
         self.show()
 
+    # -------------------
+    # Window initializing
+    # -------------------
+
+    def initUI(self, uiPath, uiIcon, uiName):
+        uiFile = QFile(uiPath)
+        uiFile.open(QFile.ReadOnly)
+        ui = QUiLoader().load(uiFile, None)  # Loading ui from .ui file
+        uiFile.close()
+
+        # Window configuration
+        self.setCentralWidget(ui)
+        self.setWindowTitle(uiName)
+        self.setWindowIcon(QIcon(uiIcon))
+
+        return ui
+
+    def initTextElems(self):
+        errorLabel = self.findChild(QLabel, 'errors')
+        playerInputLineEdit = self.findChild(QLineEdit, 'input')
+        enterMoveButton = self.findChild(QPushButton, 'enterMove')
+        historyBlockTextEdit = self.findChild(QTextEdit, 'historyBlock')
+
+        return errorLabel, playerInputLineEdit, enterMoveButton, historyBlockTextEdit
+
+    def initViews(self):
+        boardView = self.findChild(QGraphicsView, 'board')
+        boardView.installEventFilter(self)
+        clock1View = self.findChild(QGraphicsView, 'clock1')
+        clock2View = self.findChild(QGraphicsView, 'clock2')
+
+        return boardView, clock1View, clock2View
+
+    def initGameMenu(self):
+        startGameAction = self.findChild(QAction, 'startGame')
+        startGameAction.triggered.connect(self.startNewGame)
+        startGameAction.setIcon(self.style().standardIcon(QStyle.SP_ArrowForward))
+
+        saveHistoryMenu = self.findChild(QMenu, 'saveGameHistory')
+        saveHistoryMenu.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+
+        xmlSaveAction = self.findChild(QAction, 'xmlSave')
+        xmlSaveAction.triggered.connect(self.xmlSaveHistory)
+        xmlSaveAction.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+
+        sqliteSaveAction = self.findChild(QAction, 'sqliteSave')
+        sqliteSaveAction.triggered.connect(self.sqliteSave)
+        sqliteSaveAction.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+
+        return saveHistoryMenu
+
+    def initSettingsMenu(self):
+        settingsMenu = self.findChild(QMenu, 'settings')
+
+        saveConfigAction = self.findChild(QAction, 'saveConfig')
+        saveConfigAction.triggered.connect(self.saveConfig)
+        saveConfigAction.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+
+        loadStyleAction = self.findChild(QAction, 'loadStyle')
+        loadStyleAction.triggered.connect(self.loadStylesFromConfig)
+        loadStyleAction.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+
+        return settingsMenu
+
     def createScenes(self):
-        # Creating clock for the first player ('light' side)
+        # Create clock for the first player ('light' side)
         self.clock1 = Clock(parent=self)
         self.clock1View.setScene(QGraphicsScene(self))
         self.clock1View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
         self.clock1View.scene().addItem(self.clock1)
 
-        # Creating clock for the second player ('dark' side)
+        # Create clock for the second player ('dark' side)
         self.clock2 = Clock(parent=self)
         self.clock2View.setScene(QGraphicsScene(self))
         self.clock2View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
         self.clock2View.scene().addItem(self.clock2)
 
-        # Creating board
+        # Create board
         self.board = Board(self)
         self.boardView.setScene(self.board)
 
+    def eventFilter(self, source, event):
+        if source == self.boardView and event.type() == QEvent.Resize:
+            baseWidth, baseHeight = 800, 800
+            scaleX, scaleY = float(self.boardView.width()) / baseWidth, float(self.boardView.height()) / baseHeight
+            transform = QTransform()
+            transform.scale(scaleX, scaleY)
+            self.boardView.setTransform(transform)
+
+        return super(MainWindow, self).eventFilter(source, event)
+
+    # -----------------------
+    # Start new game/playback
+    # -----------------------
+
     def startNewGame(self):
-        self.startDialog = StartDialog(self)
+        self.startDialog = StartDialog(self)    # Show start window with game options
 
-        # Starting new game if accepted - clearing scenes and creating new elements and items
+        # Start new game if accepted - clear scenes and create new elements and items
         if self.startDialog.ui.exec_() == QDialog.Accepted:
-            # Unlock settings (before first game)
-            self.settingsMenu.setEnabled(True)
-
             # Stop clocks to avoid errors
             self.clock1.timer.stop()
             self.clock2.timer.stop()
 
-            # Clearing scenes and other items
+            # Clear scenes and other items
             self.boardView.scene().clear()
             self.boardView.viewport().update()
             self.clock1View.scene().clear()
             self.clock1View.viewport().update()
             self.clock2View.scene().clear()
             self.clock2View.viewport().update()
-            self.playerInput.returnPressed.disconnect()
+            self.playerInputLineEdit.returnPressed.disconnect()
             self.errorLabel.clear()
+            self.historyBlockTextEdit.setHtml("")
 
-            # Creating new scenes
-            self.createScenes()
+            self.createScenes()  # Create new scenes
+            self.board.logic.activePlayer = "light"  # Setting active player
 
-            # Setting styles
-            styles = self.startDialog.getStyles()
-            if not any(style is None for style in styles):
+            # Set styles (if config file was selected)
+            styles = self.startDialog.getStylesFromConfig()
+            if all(style is not None for style in styles):
                 self.board.applyStyleConfig(*styles)
 
-            # Setting clocks
-            timeH, timeMin, timeSec = self.startDialog.getGameTime()
+            # History playback (if history file was selected)
+            histories = self.startDialog.getHistoryFromFiles()
+            if all(history for history in histories):
+                self.startHistoryPlayback(*histories)
+                return
 
-            self.clock1.setTimer(timeH, timeMin, timeSec)
+            # Unlock settings and savings (before first game)
+            self.settingsMenu.setEnabled(True)
+            self.saveHistoryMenu.setEnabled(True)
+            self.enterMoveButton.setEnabled(True)
+
+            # Set clocks
+            timeHour, timeMin, timeSec = self.startDialog.getGameTime()
+
+            self.clock1.setTimer(timeHour, timeMin, timeSec)
             self.clock1.startTimer()
             self.clock1.setOpacity(1)
 
-            self.clock2.setTimer(timeH, timeMin, timeSec)
+            self.clock2.setTimer(timeHour, timeMin, timeSec)
             self.clock2.setOpacity(0.7)
 
-            # Setting input field
-            self.playerInput.clear()
-            self.playerInput.setReadOnly(False)
-            self.playerInput.setPlaceholderText("Input | Player №1")
+            # Set input field
+            self.playerInputLineEdit.clear()
+            self.playerInputLineEdit.setReadOnly(False)
+            self.playerInputLineEdit.setPlaceholderText("Input | Player №1")
 
-            # Setting active player
-            self.board.logic.activePlayer = "light"
+    def startHistoryPlayback(self, movesHistory, clock1History, clock2History):
+        self.enterMoveButton.setEnabled(False)
+        playbackDialog = PlaybackDialog(movesHistory, clock1History, clock2History, self)
+        playbackDialog.ui.exec_()
 
-    def loadStyleFromConfig(self):
+    # --------------
+    # Config support
+    # --------------
+
+    def loadStylesFromConfig(self):
+        # Choose config file (json)
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
         configPath, _ = QFileDialog.getOpenFileName(self, "Open Config File", "data/config", "JSON Files (*.json)", options=options)
 
-        if os.path.isfile(configPath):
-            with open(configPath, "r") as file:
-                config = json.load(file)
-
-            errors = self.validateStyleFromConfig(config)  # Config parameters validation
-
-            if not errors:
-                style = config.get("style", {})
-
-                board = style.get("board", {})
-                boardStyleConfig = board.get("boardStyle", "standard")
-
-                pieces = style.get("pieces", {})
-                lightSideStyleConfig = pieces.get("lightSideStyle", "light")
-                darkSideStyleConfig = pieces.get("darkSideStyle", "dark")
-
-                styles = boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig
-                self.board.applyStyleConfig(*styles)
-
-                # Updating status
-                self.errorLabel.setText("Config loaded successfully!")
-                self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
-            else:
-                self.errorLabel.setText("Invalid config parameters (" + ", ".join(errors) + ").\nLoading failed!")
-                self.errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
-        else:
+        # Check if the config file exists
+        if not os.path.isfile(configPath):
             self.errorLabel.setText("Config file not found or not selected!")
             self.errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
+            return
+
+        # Open config file
+        with open(configPath, "r") as file:
+            config = json.load(file)
+
+        # Validate config parameters
+        errors = self.validateStylesFromConfig(config)  # Config parameters validation
+        if errors:
+            self.errorLabel.setText("Invalid config parameters (" + ", ".join(errors) + ").\nLoading failed!")
+            self.errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
+            return
+
+        # Style configuration
+        styleBlock = config.get("style", {})
+
+        boardBlock = styleBlock.get("board", {})
+        boardStyleConfig = boardBlock.get("boardStyle", "standard")
+
+        pieces = styleBlock.get("pieces", {})
+        lightSideStyleConfig = pieces.get("lightSideStyle", "light")
+        darkSideStyleConfig = pieces.get("darkSideStyle", "dark")
+
+        styles = boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig
+        self.board.applyStyleConfig(*styles)
+
+        # Update status
+        self.errorLabel.setText("Config loaded successfully!")
+        self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
     @staticmethod
-    def validateStyleFromConfig(config):
+    def validateStylesFromConfig(config):
         errors = []
         style = config.get("style", {})
 
-        # Checking style parameters
+        # Check style parameters
+        # 1) Board
         board = style.get("board", {})
         boardStyle = board.get("boardStyle", "standard")
         if boardStyle not in ["standard", "rock", "wood"]:
             errors.append("board style")
 
+        # 2) Pieces
         pieces = style.get("pieces", {})
         lightSideStyle = pieces.get("lightSideStyle", "light")
         darkSideStyle = pieces.get("darkSideStyle", "dark")
@@ -173,12 +257,15 @@ class MainWindow(QMainWindow):
         return errors
 
     def saveConfig(self):
-        config = {}
+        # Select file to save config (json)
         configPath, _ = QFileDialog.getSaveFileName(self, "Save Config File", "data/config/config.json", "JSON (*.json)")
+        config = {}
 
+        # Check if no file was selected
         if not configPath:
             return
 
+        # Completing config with parameters
         boardStyle, lightSideStyle, darkSideStyle = self.board.getStyleConfig()
         config["style"] = {
             "board": {
@@ -191,7 +278,7 @@ class MainWindow(QMainWindow):
         }
 
         hours, mins, secs = self.startDialog.getGameTime()
-        mode = self.startDialog.getMode()
+        mode = self.startDialog.getGameMode()
         ip, port = self.startDialog.getNetParams()
         config["initial"] = {
             "time": {
@@ -206,8 +293,106 @@ class MainWindow(QMainWindow):
             }
         }
 
+        # Write config to file
         with open(configPath, "w") as file:
             json.dump(config, file, indent=4)
 
+        # Update status
         self.errorLabel.setText("Config saved successfully!")
         self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
+
+    # ---------------
+    # History support
+    # ---------------
+
+    def xmlSaveHistory(self):
+        # Creating XML element representing a move with the given move and time
+        def createMoveElem(move, time):
+            moveElem = Element('move')
+            moveElem.set('end_time', time)
+            moveElem.text = move
+
+            return moveElem
+
+        # Select file to save history (xml)
+        xmlPath, _ = QFileDialog.getSaveFileName(self, "Save History", "data/history/history.xml",
+                                                 "XML (*.xml)")
+        # Check if no file was selected
+        if not xmlPath:
+            return
+
+        # Extract histories
+        history = self.getAllHistory()
+
+        game = Element('history')
+        movesElem = SubElement(game, 'moves')
+
+        moves = [createMoveElem(move, time) for move, time in history]
+        movesElem.extend(moves)
+
+        # Write XML structure to file
+        xmlPretty = minidom.parseString(tostring(game)).toprettyxml(indent='\t')
+        with open(xmlPath, 'w') as f:
+            f.write(xmlPretty)
+
+        # Update status
+        self.errorLabel.setText("History in XML saved successfully!")
+        self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
+
+    def sqliteSave(self):
+        # Select file to save history (database)
+        dbPath, _ = QFileDialog.getSaveFileName(self, "Save History", "data/history/history.db",
+                                                "SQLite Database (*.db *.sqlite)")
+        # Check if no file was selected
+        if not dbPath:
+            return
+
+        # Extract histories
+        history = self.getAllHistory()
+
+        # Open a connection to the SQLite database
+        conn = sqlite3.connect(dbPath)
+        cursor = conn.cursor()
+
+        # Drop (if exist) and create history table
+        cursor.execute('''DROP TABLE IF EXISTS history''')
+        cursor.execute('''
+                CREATE TABLE history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    move TEXT,
+                    end_time TEXT
+                )
+            ''')
+
+        # Insert game data into history table
+        [cursor.execute('INSERT INTO history (move, end_time) VALUES (?, ?)', (move, endTime)) for move, endTime in history]
+
+        # Apply changes to database and close connection
+        conn.commit()
+        conn.close()
+
+        # Update status label
+        self.errorLabel.setText("History in SQLite3 saved successfully!")
+        self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
+
+    def getAllHistory(self):
+        # Format time tuple into a string with the format 'hh:mm:ss:zz'
+        def formatTime(time):
+            if time is None:
+                return ''
+
+            return f'{time[0]}:{time[1]}:{time[2]}:{time[3]}'
+
+        # Extract moves and end times from actual game
+        movesHistory = self.board.logic.moveHistory
+        clock1History = self.clock1.timeHistory
+        clock2History = self.clock2.timeHistory
+
+        # Combining moves and time histories
+        allHistory = [
+            (move, formatTime(clock1History[i // 2]) if i % 2 == 0 and i // 2 < len(clock1History)
+             else formatTime(clock2History[i // 2]) if i % 2 == 1 and i // 2 < len(clock2History)
+             else '') for i, move in enumerate(movesHistory)
+        ]
+
+        return allHistory

@@ -20,22 +20,28 @@ class Board(QGraphicsScene):
         # Logic initializing
         self.logic = ChessLogic()
 
-        # Creating tiles and pieces
+        # Create tiles and pieces
         self.createTiles()
         self.createPieces()
 
-        # Connecting signals to clocks when players click
+        # Connect signals to clocks when players click
         self.clock1 = self.mainWindow.clock1
         self.clock2 = self.mainWindow.clock2
         self.clock1.onClick = lambda event: self.endPlayerMove(event, "light")
         self.clock2.onClick = lambda event: self.endPlayerMove(event, "dark")
 
-        # Connecting signals to error and input fields when players provide commands
+        # Connect signals to error and input fields when players provide commands
+        self.historyBlockTextEdit = self.mainWindow.historyBlockTextEdit
         self.errorLabel = self.mainWindow.errorLabel
-        self.playerInput = self.mainWindow.playerInput
-        self.playerInput.returnPressed.connect(self.textMove)
+        self.playerInputLineEdit = self.mainWindow.playerInputLineEdit
+        self.enterMoveButton = self.mainWindow.enterMoveButton
 
-    # ---------------- Creating scene items ----------------
+        self.playerInputLineEdit.returnPressed.connect(self.textMove)
+        self.enterMoveButton.clicked.connect(self.textMove)
+
+    # ---------------------
+    # Creating scene items
+    # ---------------------
 
     def createTiles(self):
         width, height = self.boardSize.width(), self.boardSize.height()
@@ -82,7 +88,9 @@ class Board(QGraphicsScene):
         [self.addItem(Piece(piece, side, x, secondRow, self.tileSize)) for x in range(self.boardSize.width())]
         [self.logic.setPiece(x, secondRow, piece) for x in range(self.boardSize.width())]
 
-    # ---------------- Configs ----------------
+    # ---------------
+    # Config support
+    # ---------------
 
     def applyStyleConfig(self, boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig):
         tile = [item for item in self.items() if isinstance(item, Tile)][0]
@@ -106,22 +114,24 @@ class Board(QGraphicsScene):
 
         return boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig
 
-    # ---------------- Game components ----------------
+    # ---------------
+    # Game components
+    # ---------------
 
     def endPlayerMove(self, event, player):
         if event.button() != Qt.LeftButton:
             return
 
-        # If the player tries to stop not his clock
+        # Check if the player tries to stop not his clock
         if self.logic.activePlayer != player:
             return
 
-        # If the player has not yet made a move
+        # Check if the player has not yet made a move
         if not self.logic.playerMoved:
             self.errorLabel.setText(self.logic.getError(6))
             return
 
-        # Changing active player and setting clocks
+        # Change active player and set clocks
         self.changeActivePlayer()
 
         if player == "light":
@@ -136,41 +146,60 @@ class Board(QGraphicsScene):
             self.clock2.pauseTimer()
 
     def changeActivePlayer(self):
-        # Clearing error label and input field. Cleaning playerMoved variable
+        # Clear error label and input field. Clean playerMoved variable
         self.errorLabel.clear()
-        self.playerInput.clear()
+        self.playerInputLineEdit.clear()
         self.logic.playerMoved = False
 
-        # Switching player
+        # Switch player
         if self.logic.activePlayer == "light":
             self.logic.activePlayer = "dark"
-            self.playerInput.setPlaceholderText("Input | Player №2")
+            self.playerInputLineEdit.setPlaceholderText("Input | Player №2")
         else:
             self.logic.activePlayer = "light"
-            self.playerInput.setPlaceholderText("Input | Player №1")
+            self.playerInputLineEdit.setPlaceholderText("Input | Player №1")
 
-        # Cleaning all legalMoves variables from all pieces
+        # Clean all legalMoves variables from all pieces
         [piece.__setattr__('legalMoves', []) for piece in self.items() if isinstance(piece, Piece)]
 
-    def textMove(self):
-        # Clearing error label
+        # Refresh history
+        self.refreshHistoryBlock()
+
+    def refreshHistoryBlock(self):
+        newMove = self.logic.moveHistory[-1]
+
+        if len(self.logic.moveHistory) % 2 == 0:    # 'dark' side
+            self.historyBlockTextEdit.insertHtml(f"{newMove}")
+            self.historyBlockTextEdit.insertPlainText(" → ")
+        else:                                       # 'light' side
+            self.historyBlockTextEdit.insertHtml(f"<b>{newMove}</b>")
+            if "#" not in newMove:
+                self.historyBlockTextEdit.insertPlainText(" → ")
+
+    def textMove(self, playbackMove=None):
+        # Clear error label
         self.errorLabel.clear()
+        self.errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
 
-        # Read and parse text from input field
-        moveText = self.playerInput.text()
-        move = self.logic.parseMove(moveText)
+        # Read and parse text move (different actions depending on whether there is playback)
+        if playbackMove:
+            moveText = playbackMove.replace("+", "").replace("#", "").replace("ep", "")  # Remove unnecessary symbols
+        else:
+            moveText = self.playerInputLineEdit.text()  # Get move from line edit
 
-        # If the player has already made a move
-        if self.logic.playerMoved:
-            self.errorLabel.setText(self.logic.getError(1))
-            return
+            # Check if the player has already made a move
+            if self.logic.playerMoved:
+                self.errorLabel.setText(self.logic.getError(1))
+                return
 
-        # If parsing failed
+        move = self.logic.parseMove(moveText)   # Parse move
+
+        # Check if the parsing failed
         if move is None:
             self.errorLabel.setText(self.logic.getError(0))
             return
 
-        # If disambiguating or incorrect move
+        # Check if disambiguating or incorrect move
         if isinstance(move, str):
             self.errorLabel.setText(move)
             return
@@ -181,20 +210,20 @@ class Board(QGraphicsScene):
         field = QRect(startX * self.tileSize, startY * self.tileSize, self.tileSize, self.tileSize)
         piece = [piece for piece in self.items(field) if (isinstance(piece, Piece))]
 
-        # If there are no pieces that can make that movement
+        # Check if there are no pieces that can make that movement
         if not piece:
             self.errorLabel.setText(self.logic.getError(5))
             return
 
-        piece = piece[0]    # always will be one element in piece list
+        piece = piece[0]    # Always will be one element in piece list
         piece.legalMoves = self.logic.getLegalMoves(startX, startY)
 
-        # If a player tries to move an opponent's piece
+        # Check if a player tries to move an opponent's piece
         if piece.side != self.logic.activePlayer:
             self.errorLabel.setText(self.logic.getError(2))
             return
 
-        # Check of failed promotion
+        # Check for failed promotion
         if promotionPiece is not None and self.logic.isPromotion(endX, endY):
             self.errorLabel.setText(self.logic.getError(8))
             return
@@ -203,8 +232,8 @@ class Board(QGraphicsScene):
         piece.playerMove(startX, startY, endX, endY, text=promotionPiece)
         piece.update()
 
-        # Clearing input field
-        self.playerInput.clear()
+        # Clear input field
+        self.playerInputLineEdit.clear()
 
     def gameOver(self):
         # Stop the game and show game over message
@@ -214,12 +243,15 @@ class Board(QGraphicsScene):
         self.clock1.setOpacity(1.0)
         self.clock2.setOpacity(1.0)
 
-        self.playerInput.setPlaceholderText("Game over!")
+        self.playerInputLineEdit.setPlaceholderText("Game over!")
+        self.enterMoveButton.setEnabled(False)
 
         self.showGameOverMessage()
         self.logic.activePlayer = None
 
-    # ---------------- Additional windows ----------------
+    # ------------------
+    # Additional windows
+    # ------------------
 
     def showGameOverMessage(self):
         msg = QMessageBox(self.views()[0])

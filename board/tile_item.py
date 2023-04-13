@@ -29,7 +29,9 @@ class Tile(QGraphicsItem):
         self.checkTexture = QPixmap(QSize(self.size, self.size))
         self.checkTexture.fill(QColor(227, 11, 92))
 
-    # ---------------- Texture components ----------------
+    # ------------------
+    # Texture components
+    # ------------------
 
     def loadTexture(self):
         self.darkTexture = QPixmap(self.boardStyleDark)
@@ -39,7 +41,7 @@ class Tile(QGraphicsItem):
         return QRect(0, 0, self.size, self.size)
 
     def paint(self, painter, option, widget=None):
-        # Choosing the texture depending on the flags
+        # Choose the texture depending on the flags
         texture = (self.validTexture if self.showValid else
                    self.checkTexture if self.showCheck else
                    self.lightTexture if (self.x + self.y) % 2 == 0 else self.darkTexture)

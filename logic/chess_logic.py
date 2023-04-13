@@ -5,31 +5,33 @@ import itertools
 
 class ChessLogic:
     def __init__(self):
-        # Chess logic parameters
+        # Main parameters
         self.textBoard = np.full((8, 8), ".", dtype=str)
         self.moveHistory = []
-
         self.activePlayer = None
+
+        # Flags
         self.playerMoved = False
         self.check = False
-
-        self.promotionPiece = None
-
-        self.enPassantTarget = None
         self.enPassantPerformed = False
-
-        self.castlingRookPos = None
         self.castlingPerformed = False
+
+        # Additional parameters
+        self.promotionPiece = None
+        self.enPassantTarget = None
+        self.castlingRookPos = None
         self.castling = {'light': {'kingMoved': False, 'leftRookMoved': False, 'rightRookMoved': False},
                          'dark': {'kingMoved': False, 'leftRookMoved': False, 'rightRookMoved': False}}
 
-    # ---------------- General ----------------
+    # -----------------
+    # General functions
+    # -----------------
 
     def switchActivePlayer(self):
         self.activePlayer = "dark" if self.activePlayer == "light" else "light"
 
     @staticmethod
-    def getError(no):
+    def getError(ind):
         errors = [
             "Error when parsing move! Probably format is incorrect",
             "You have already made your move! Click to your clock to finish",
@@ -44,9 +46,11 @@ class ChessLogic:
             "You can't do the capture!"
         ]
 
-        return errors[no]
+        return errors[ind]
 
-    # ---------------- Connected with positions ----------------
+    # ---------------
+    # Piece positions
+    # ---------------
 
     def getPiece(self, x, y):
         return self.textBoard[y, x]
@@ -54,8 +58,8 @@ class ChessLogic:
     def setPiece(self, x, y, piece):
         self.textBoard[y, x] = piece
 
-    def findPiecesXY(self, pieceType):
-        coords = np.where(self.textBoard == pieceType)
+    def findPiecesXY(self, piece):
+        coords = np.where(self.textBoard == piece)
         return list(zip(coords[1], coords[0]))
 
     def getKingPos(self, isLight):
@@ -64,16 +68,18 @@ class ChessLogic:
 
         return pos[1][0], pos[0][0]
 
-    # ---------------- Moving (general) ----------------
+    # ----------------------
+    # Piece moving (general)
+    # ----------------------
 
     def movePiece(self, startX, startY, newX, newY):
         piece = self.getPiece(startX, startY)
 
-        # If the player has not changed the position of the piece
+        # Check if the player has not changed the position of the piece
         if [newX, newY] == [startX, startY]:
             return
 
-        # If castling is possible
+        # Check if castling is possible
         if piece.lower() == 'k' and [newX, newY] in self.getCastlingMoves(startX, startY):
             rookStartX, rookNewX = 7 if newX - startX > 0 else 0, (newX + startX) // 2
             rookPiece = self.getPiece(rookStartX, startY)
@@ -90,7 +96,7 @@ class ChessLogic:
                 elif rookStartX == 7:
                     self.castling[self.activePlayer]['rightRookMoved'] = True
 
-        # Changing flags related to the movements of the kings and the rooks
+        # Change flags related to the movements of the kings and the rooks
         if piece.lower() == 'k':
             self.castling[self.activePlayer]['kingMoved'] = True
         elif piece.lower() == 'r':
@@ -100,7 +106,7 @@ class ChessLogic:
                 elif startX == 7:
                     self.castling[self.activePlayer]['rightRookMoved'] = True
 
-        # If en passant is possible
+        # Check if en passant is possible
         if self.enPassantTarget is not None:
             x, y = self.enPassantTarget
             if (piece == 'P' and self.getPiece(x, y) == 'p') or (piece == 'p' and self.getPiece(x, y) == 'P'):
@@ -108,14 +114,14 @@ class ChessLogic:
                     self.setPiece(*self.enPassantTarget, '.')
                     self.enPassantPerformed = True
 
-        # If en passant is not performed
+        # Check if en passant is not performed
         if not self.enPassantPerformed:
             self.enPassantTarget = (newX, newY) if piece.lower() == 'p' and abs(newY - startY) == 2 else None
 
-        # Converting move coordinates to the move according to SAN notation
+        # Convert move coordinates to the move according to SAN notation
         sanMove = self.coordsToSAN(startX, startY, newX, newY)
 
-        # Performing move
+        # Perform move
         self.setPiece(newX, newY, piece)
         self.setPiece(startX, startY, '.')
 
@@ -123,9 +129,8 @@ class ChessLogic:
         if self.isInCheck(not self.activePlayer == 'light')[2]:
             sanMove += '#' if self.isCheckmate(not self.activePlayer == 'light') else '+'
 
-        # Adding move to the history array
+        # Add move to the history
         self.moveHistory.append(sanMove)
-        print(self.moveHistory[-1])
 
     def testMovePiece(self, startX, startY, newX, newY):
         piece = self.getPiece(startX, startY)
@@ -145,6 +150,18 @@ class ChessLogic:
         self.setPiece(newX, newY, piece)
         self.setPiece(startX, startY, '.')
 
+    def simulateMove(self, x1, y1, x2, y2, piece):
+        target = self.getPiece(x2, y2)
+
+        self.testMovePiece(x1, y1, x2, y2)
+        inCheck = self.isInCheck(piece.isupper())[2]
+        self.testMovePiece(x2, y2, x1, y1)
+
+        if target != '.':
+            self.setPiece(x2, y2, target)
+
+        return inCheck
+
     def getLegalMoves(self, x, y):
         possibleMoves = self.getPossibleMoves(x, y)
         piece = self.getPiece(x, y)
@@ -158,18 +175,6 @@ class ChessLogic:
         legalMoves = [[newX, newY] for newX, newY in possibleMoves if not self.simulateMove(x, y, newX, newY, piece)]
 
         return legalMoves
-
-    def simulateMove(self, x1, y1, x2, y2, piece):
-        targetPiece = self.getPiece(x2, y2)
-
-        self.testMovePiece(x1, y1, x2, y2)
-        inCheck = self.isInCheck(piece.isupper())[2]
-        self.testMovePiece(x2, y2, x1, y1)
-
-        if targetPiece != '.':
-            self.setPiece(x2, y2, targetPiece)
-
-        return inCheck
 
     def getPossibleMoves(self, x, y):
         piece = self.getPiece(x, y)
@@ -199,7 +204,7 @@ class ChessLogic:
                     if self.getPiece(x, y + 2 * moveDir) == '.':
                         regularMoves.append([x, y + 2 * moveDir])
 
-        # If en passant is possible
+        # Check if en passant is possible
         if self.enPassantTarget is not None:
             enX, enY = self.enPassantTarget
             if y == enY and (x - 1 == enX or x + 1 == enX) and 0 <= enY + moveDir < 8:
@@ -275,15 +280,17 @@ class ChessLogic:
 
         return moves
 
-    # ---------------- Moving (special) ----------------
+    # ----------------------
+    # Piece moving (special)
+    # ----------------------
 
     def isSquareAttacked(self, x, y, isLight):
-        attacked = any([x, y] in self.getPossibleMoves(attackX, attackY)
-                       for attackX, attackY in itertools.product(range(8), range(8))
-                       if self.getPiece(attackX, attackY) != '.'
-                       and self.getPiece(attackX, attackY).isupper() != isLight)
+        iAttacked = any([x, y] in self.getPossibleMoves(attackX, attackY)
+                        for attackX, attackY in itertools.product(range(8), range(8))
+                        if self.getPiece(attackX, attackY) != '.'
+                        and self.getPiece(attackX, attackY).isupper() != isLight)
 
-        return attacked
+        return iAttacked
 
     def isInCheck(self, isLight):
         kingX, kingY = self.getKingPos(isLight)
@@ -299,12 +306,12 @@ class ChessLogic:
         if not self.isInCheck(isLight)[2]:
             return False
 
-        checkmate = not any(self.getLegalMoves(x, y)
-                            for x, y in itertools.product(range(8), range(8))
-                            if self.getPiece(x, y) != '.'
-                            and self.getPiece(x, y).isupper() == isLight)
+        isCheckmate = not any(self.getLegalMoves(x, y)
+                              for x, y in itertools.product(range(8), range(8))
+                              if self.getPiece(x, y) != '.'
+                              and self.getPiece(x, y).isupper() == isLight)
 
-        return checkmate
+        return isCheckmate
 
     def isEnPassant(self):
         enPassantPerformed = self.enPassantPerformed
@@ -344,7 +351,7 @@ class ChessLogic:
     def getCastlingMoves(self, x, y):
         moves = []
 
-        # If the king has already been moved
+        # Check if the king has already been moved
         if self.castling[self.activePlayer]['kingMoved']:
             return moves
 
@@ -376,13 +383,15 @@ class ChessLogic:
                    or self.isSquareAttacked(x + 1, y, isLight) \
                    or self.isSquareAttacked(x + 2, y, isLight)
 
-    # ---------------- Algebraic notation block ----------------
+    # ------------------------
+    # Algebraic notation block
+    # ------------------------
 
     def parseMove(self, moveText):
-        # Removing spaces from text
+        # Remove spaces from text
         moveText = moveText.strip()
 
-        # If castling combination
+        # Check for castling combination
         if moveText in ["O-O", "O-O-O", "0-0", "0-0-0"]:
             piece = 'K' if self.activePlayer == 'light' else 'k'
             startX, startY = self.findPiecesXY(piece)[0]
@@ -398,43 +407,43 @@ class ChessLogic:
         pattern = re.compile(r"^([RNBQK]?)([a-h]?)([1-8]?)([x]?)([a-h][1-8])(=?[qrbnQRBN]?)$")
         match = pattern.match(moveText)
 
-        # If the analysis failed
+        # Check if the analysis failed
         if not match:
             return None
 
-        # Getting data from analyzing results
+        # Get data from matching results
         piece, file, rank, capture, end, promotionPiece = match.groups()
         endX, endY = ord(end[0]) - ord('a'), 8 - int(end[1])
 
-        # If there is no capture to perform
-        if capture and self.getPiece(endX, endY) == '.':
+        # Check if there is no capture to perform
+        if capture and self.getPiece(endX, endY) == '.' and not self.enPassantTarget:
             return self.getError(10)
 
-        # If no piece type is specified - it is about pawns (e.g. 'e4')
+        # Check if no piece type is specified - it is about pawns (e.g. 'e4')
         if not piece:
             piece = 'P' if self.activePlayer == 'light' else 'p'
 
-        # 'Resizing' piece name
+        # 'Resize' piece name
         if self.activePlayer == 'dark':
             piece = piece.lower()
 
-        # Finding the position of all player pieces of a given type
+        # Find the position of all player pieces of a given type
         piecePositions = self.findPiecesXY(piece)
         if not piecePositions:
             return self.getError(3)
 
-        # Finding possible piece positions
+        # Find possible piece positions
         possiblePositions = [
             (x, y) for x, y in piecePositions
             if [endX, endY] in self.getLegalMoves(x, y)
         ]
 
-        # Checking unambiguous moves
+        # Check for unambiguous moves
         isUnambiguous, startX, startY = self.isMoveUnambiguous(possiblePositions, file, rank)
         if not isUnambiguous:
             return self.getError(4 if len(possiblePositions) > 1 else 5)
 
-        # Checking for promotion piece
+        # Check for promotion piece
         if promotionPiece:
             promotionPiece = promotionPiece[1].lower() if self.getPiece(startX, startY).islower() else \
                 promotionPiece[1].upper()

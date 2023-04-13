@@ -9,7 +9,7 @@ class Clock(QGraphicsEllipseItem):
         self.mainWindow = parent
         self.onClick = None
 
-        # Setting design of the clock
+        # Set design of the clock
         self.setBrush(QBrush(QColor("white")))
         self.setPen(QPen(Qt.black, 4))
         self.setOpacity(0.7)
@@ -17,16 +17,17 @@ class Clock(QGraphicsEllipseItem):
         self.tran = int(self.size / 2)
         self.font = int(self.size / 50)
 
-        # Initializing timer
+        # Initialize timer
         self.timer = QTimer()
-        self.gameTime = QTime(0, 0, 0, 0)
-        self.endTime = QTime(0, 0, 0, 0)
-        self.leftTime = QTime(0, 0, 0, 0)
-        self.beforePause = QTime(0, 0, 0, 0)
-        self.afterPause = QTime(0, 0, 0, 0)
+        self.gameTime, self.endTime, self.leftTime, self.beforePause, self.afterPause = [QTime(0, 0, 0, 0)] * 5
         self.timer.timeout.connect(self.updateTime)
 
-    # ---------------- Setting timer ----------------
+        # Time history (end of move)
+        self.timeHistory = []
+
+    # --------------
+    # Timer support
+    # --------------
 
     def setTimer(self, timeH, timeMin, timeSec):
         self.gameTime = QTime(timeH, timeMin, timeSec, 0)
@@ -50,6 +51,7 @@ class Clock(QGraphicsEllipseItem):
     def pauseTimer(self):
         self.timer.stop()
         self.beforePause = QTime.currentTime()
+        self.timeHistory.append((self.leftTime.hour(), self.leftTime.minute(), self.leftTime.second(), self.leftTime.msec()))
 
     def startTimer(self):
         # When timer starts at the beginning of the game
@@ -64,7 +66,9 @@ class Clock(QGraphicsEllipseItem):
         self.endTime = self.endTime.addMSecs(timeDiff.msec() + 1000 * (timeDiff.second() + 60 * timeDiff.minute() + 60 * 60 * timeDiff.hour()))
         self.timer.start(1)
 
-    # ---------------- Main paint element  ----------------
+    # -------------------
+    # Main paint elements
+    # -------------------
 
     def paint(self, painter, option, widget=None):
         super().paint(painter, option, widget)
@@ -98,7 +102,9 @@ class Clock(QGraphicsEllipseItem):
         self.drawSecArrow(painter)
         self.drawMSecArrow(painter)
 
-    # ---------------- Drawing elements: numbers and divs  ----------------
+    # ----------------------------------
+    # Drawing elements: numbers and divs
+    # ----------------------------------
 
     def drawMainDivs(self, painter, i):
         painter.save()
@@ -148,7 +154,9 @@ class Clock(QGraphicsEllipseItem):
 
         painter.restore()
 
-    # ---------------- Drawing elements: arrows ----------------
+    # ------------------------
+    # Drawing elements: arrows
+    # ------------------------
 
     def drawHourArrow(self, painter):
         painter.save()
@@ -187,7 +195,9 @@ class Clock(QGraphicsEllipseItem):
 
         painter.restore()
 
-    # ---------------- Clicking events ----------------
+    # ---------------
+    # Clicking events
+    # ---------------
 
     def mousePressEvent(self, event):
         if event.button() != Qt.LeftButton:
