@@ -1,8 +1,11 @@
-import json
 import os
+from datetime import datetime
+
+import json
 import sqlite3
-from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
+from xml.etree.ElementTree import Element, SubElement, tostring
+
 from PySide2.QtCore import QFile, QEvent
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QLineEdit, QAction, QDialog, QLabel, QStyle, \
@@ -24,7 +27,7 @@ class MainWindow(QMainWindow):
         self.initUI('data/ui/main_window_ui.ui', ':/pieces/yellow/k', 'Chess Gaming Platform')
 
         # UI components initializing and configuration
-        self.errorLabel, self.playerInputLineEdit, self.enterMoveButton, self.historyBlockTextEdit = self.initTextElems()
+        self.errorLabel, self.playerInputLineEdit, self.historyBlockTextEdit = self.initTextElems()
         self.boardView, self.clock1View, self.clock2View = self.initViews()
         self.saveHistoryMenu = self.initGameMenu()
         self.settingsMenu = self.initSettingsMenu()
@@ -55,10 +58,9 @@ class MainWindow(QMainWindow):
     def initTextElems(self):
         errorLabel = self.findChild(QLabel, 'errors')
         playerInputLineEdit = self.findChild(QLineEdit, 'input')
-        enterMoveButton = self.findChild(QPushButton, 'enterMove')
         historyBlockTextEdit = self.findChild(QTextEdit, 'historyBlock')
 
-        return errorLabel, playerInputLineEdit, enterMoveButton, historyBlockTextEdit
+        return errorLabel, playerInputLineEdit, historyBlockTextEdit
 
     def initViews(self):
         boardView = self.findChild(QGraphicsView, 'board')
@@ -167,7 +169,6 @@ class MainWindow(QMainWindow):
             # Unlock settings and savings (before first game)
             self.settingsMenu.setEnabled(True)
             self.saveHistoryMenu.setEnabled(True)
-            self.enterMoveButton.setEnabled(True)
 
             # Set clocks
             timeHour, timeMin, timeSec = self.startDialog.getGameTime()
@@ -185,7 +186,6 @@ class MainWindow(QMainWindow):
             self.playerInputLineEdit.setPlaceholderText("Input | Player №1")
 
     def startHistoryPlayback(self, movesHistory, clock1History, clock2History):
-        self.enterMoveButton.setEnabled(False)
         playbackDialog = PlaybackDialog(movesHistory, clock1History, clock2History, self)
         playbackDialog.ui.exec_()
 
@@ -258,7 +258,10 @@ class MainWindow(QMainWindow):
 
     def saveConfig(self):
         # Select file to save config (json)
-        configPath, _ = QFileDialog.getSaveFileName(self, "Save Config File", "data/config/config.json", "JSON (*.json)")
+        currentDatetime = datetime.now()
+        formattedDatetime = currentDatetime.strftime("%d-%m-%Y_%H-%M-%S")
+        fileName = f"data/config/config_{formattedDatetime}.json"
+        configPath, _ = QFileDialog.getSaveFileName(self, "Save Config File", fileName, "JSON (*.json)")
         config = {}
 
         # Check if no file was selected
@@ -315,8 +318,11 @@ class MainWindow(QMainWindow):
             return moveElem
 
         # Select file to save history (xml)
-        xmlPath, _ = QFileDialog.getSaveFileName(self, "Save History", "data/history/history.xml",
-                                                 "XML (*.xml)")
+        currentDatetime = datetime.now()
+        formattedDatetime = currentDatetime.strftime("%d-%m-%Y_%H-%M-%S")
+        fileName = f"data/history/history_{formattedDatetime}.xml"
+        xmlPath, _ = QFileDialog.getSaveFileName(self, "Save History", fileName, "XML (*.xml)")
+
         # Check if no file was selected
         if not xmlPath:
             return
@@ -341,8 +347,11 @@ class MainWindow(QMainWindow):
 
     def sqliteSave(self):
         # Select file to save history (database)
-        dbPath, _ = QFileDialog.getSaveFileName(self, "Save History", "data/history/history.db",
-                                                "SQLite Database (*.db *.sqlite)")
+        currentDatetime = datetime.now()
+        formattedDatetime = currentDatetime.strftime("%d-%m-%Y_%H-%M-%S")
+        fileName = f"data/history/history_{formattedDatetime}.db"
+        dbPath, _ = QFileDialog.getSaveFileName(self, "Save History", fileName, "SQLite Database (*.db *.sqlite)")
+
         # Check if no file was selected
         if not dbPath:
             return

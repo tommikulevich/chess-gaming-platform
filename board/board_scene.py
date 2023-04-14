@@ -1,7 +1,7 @@
+import itertools
 from PySide2.QtCore import QSize, Qt, QRect
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QGraphicsScene, QMessageBox, QApplication, QStyle
-import itertools
 
 from board.tile_item import Tile
 from board.piece_item import Piece
@@ -34,10 +34,8 @@ class Board(QGraphicsScene):
         self.historyBlockTextEdit = self.mainWindow.historyBlockTextEdit
         self.errorLabel = self.mainWindow.errorLabel
         self.playerInputLineEdit = self.mainWindow.playerInputLineEdit
-        self.enterMoveButton = self.mainWindow.enterMoveButton
 
         self.playerInputLineEdit.returnPressed.connect(self.textMove)
-        self.enterMoveButton.clicked.connect(self.textMove)
 
     # ---------------------
     # Creating scene items
@@ -133,7 +131,9 @@ class Board(QGraphicsScene):
 
         # Change active player and set clocks
         self.changeActivePlayer()
+        self.setClocks(player)
 
+    def setClocks(self, player):
         if player == "light":
             self.clock1.setOpacity(0.7)
             self.clock2.setOpacity(1.0)
@@ -166,7 +166,7 @@ class Board(QGraphicsScene):
         self.refreshHistoryBlock()
 
     def refreshHistoryBlock(self):
-        newMove = self.logic.moveHistory[-1]
+        newMove = self.logic.moveHistory[-1] if self.logic.moveHistory else ""
 
         if len(self.logic.moveHistory) % 2 == 0:    # 'dark' side
             self.historyBlockTextEdit.insertHtml(f"{newMove}")
@@ -244,7 +244,6 @@ class Board(QGraphicsScene):
         self.clock2.setOpacity(1.0)
 
         self.playerInputLineEdit.setPlaceholderText("Game over!")
-        self.enterMoveButton.setEnabled(False)
 
         self.showGameOverMessage()
         self.logic.activePlayer = None

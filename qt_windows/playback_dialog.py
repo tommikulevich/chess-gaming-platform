@@ -23,7 +23,7 @@ class PlaybackDialog(QDialog):
         self.currentMoveIndex = 0
 
         # Playback timer parameters
-        self.playbackDuration = 1000
+        self.playbackDuration = 500
         self.playbackTimer = QTimer(self)
         self.playbackTimer.timeout.connect(self.nextMove)
 

@@ -1,0 +1,23 @@
+{
+    "style": {
+        "board": {
+            "boardStyle": "rock"
+        },
+        "pieces": {
+            "lightSideStyle": "light",
+            "darkSideStyle": "blue"
+        }
+    },
+    "initial": {
+        "time": {
+            "hour": 0,
+            "minute": 15,
+            "second": 30
+        },
+        "mode": "1 player",
+        "network": {
+            "ip": "127.0.0.0",
+            "port": "5000"
+        }
+    }
+}

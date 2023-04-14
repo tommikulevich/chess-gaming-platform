@@ -1,8 +1,10 @@
-import json
 import os
 import re
+
+import json
 import sqlite3
 from xml.etree.ElementTree import parse
+
 from PySide2.QtCore import QFile
 from PySide2.QtGui import QIcon
 from PySide2.QtUiTools import QUiLoader

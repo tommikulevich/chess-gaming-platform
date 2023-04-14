@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<history>
+	<moves>
+		<move end_time="0:0:0:0">e4</move>
+		<move end_time="0:0:0:0">e5</move>
+		<move end_time="">f4</move>
+		<move end_time="">exf4</move>
+		<move end_time="">Bc4</move>
+		<move end_time="">Qh4+</move>
+		<move end_time="">Kf1</move>
+		<move end_time="">b5</move>
+		<move end_time="">Bxb5</move>
+		<move end_time="">Nf6</move>
+		<move end_time="">Nf3</move>
+		<move end_time="">Qh6</move>
+		<move end_time="">d3</move>
+		<move end_time="">Nh5</move>
+		<move end_time="">Nh4</move>
+		<move end_time="">Qg5</move>
+		<move end_time="">Nf5</move>
+		<move end_time="">c6</move>
+		<move end_time="">g4</move>
+		<move end_time="">Nf6</move>
+		<move end_time="">Rg1</move>
+		<move end_time="">cxb5</move>
+		<move end_time="">h4</move>
+		<move end_time="">Qg6</move>
+		<move end_time="">h5</move>
+		<move end_time="">Qg5</move>
+		<move end_time="">Qf3</move>
+		<move end_time="">Ng8</move>
+		<move end_time="">Bxf4</move>
+		<move end_time="">Qf6</move>
+		<move end_time="">Nc3</move>
+		<move end_time="">Bc5</move>
+		<move end_time="">Nd5</move>
+		<move end_time="">Qxb2</move>
+		<move end_time="">Bd6</move>
+		<move end_time="">Bxg1</move>
+		<move end_time="">e5</move>
+		<move end_time="">Qxa1+</move>
+		<move end_time="">Ke2</move>
+		<move end_time="">Na6</move>
+		<move end_time="">Nxg7+</move>
+		<move end_time="">Kd8</move>
+		<move end_time="">Qf6+</move>
+		<move end_time="">Nxf6</move>
+		<move end_time="">Be7#</move>
+	</moves>
+</history>
