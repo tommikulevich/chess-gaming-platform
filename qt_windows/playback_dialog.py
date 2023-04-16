@@ -98,6 +98,7 @@ class PlaybackDialog(QDialog):
 
     def nextMove(self):
         move = self.movesHistory[self.currentMoveIndex]     # Get move
+        self.moveLabel.setText(f"Move: {move}")
         self.mainWindow.board.textMove(playbackMove=move)   # Perform move
 
         # Setting the end time of a move on the player's clock
@@ -111,9 +112,8 @@ class PlaybackDialog(QDialog):
             self.mainWindow.clock2.update()
 
         self.currentMoveIndex += 1
-        self.mainWindow.board.changeActivePlayer()  # Change player (needed for performing move)
-        self.moveLabel.setText(f"Move: {move}")
-
-        # Check if all moves have been made
-        if self.currentMoveIndex >= len(self.movesHistory):
+        if self.currentMoveIndex >= len(self.movesHistory):  # Check if all moves have been made
             self.endPlayback()
+            return
+
+        self.mainWindow.board.changeActivePlayer()  # Change player (needed for performing move)

@@ -1,7 +1,7 @@
 import itertools
 from PySide2.QtCore import QSize, Qt, QRect
 from PySide2.QtGui import QIcon
-from PySide2.QtWidgets import QGraphicsScene, QMessageBox, QApplication, QStyle
+from PySide2.QtWidgets import QGraphicsScene, QMessageBox, QApplication, QStyle, QTableWidgetItem
 
 from board.tile_item import Tile
 from board.piece_item import Piece
@@ -31,7 +31,7 @@ class Board(QGraphicsScene):
         self.clock2.onClick = lambda event: self.endPlayerMove(event, "dark")
 
         # Connect signals to error and input fields when players provide commands
-        self.historyBlockTextEdit = self.mainWindow.historyBlockTextEdit
+        self.historyBlockTableWidget = self.mainWindow.historyBlockTableWidget
         self.errorLabel = self.mainWindow.errorLabel
         self.playerInputLineEdit = self.mainWindow.playerInputLineEdit
 
@@ -167,14 +167,21 @@ class Board(QGraphicsScene):
 
     def refreshHistoryBlock(self):
         newMove = self.logic.moveHistory[-1] if self.logic.moveHistory else ""
+        rowCount = self.historyBlockTableWidget.rowCount()
 
-        if len(self.logic.moveHistory) % 2 == 0:    # 'dark' side
-            self.historyBlockTextEdit.insertHtml(f"{newMove}")
-            self.historyBlockTextEdit.insertPlainText(" → ")
-        else:                                       # 'light' side
-            self.historyBlockTextEdit.insertHtml(f"<b>{newMove}</b>")
-            if "#" not in newMove:
-                self.historyBlockTextEdit.insertPlainText(" → ")
+        if len(self.logic.moveHistory) % 2 == 0:  # 'dark' side
+            moveItem = QTableWidgetItem(newMove)
+            moveItem.setTextAlignment(Qt.AlignCenter)
+            self.historyBlockTableWidget.setItem(rowCount - 1, 1, moveItem)
+        else:  # 'light' side
+            self.historyBlockTableWidget.insertRow(rowCount)
+
+            moveItem = QTableWidgetItem(newMove)
+            moveItem.setTextAlignment(Qt.AlignCenter)
+            self.historyBlockTableWidget.setItem(rowCount, 0, moveItem)
+
+        self.historyBlockTableWidget.resizeColumnsToContents()
+        self.historyBlockTableWidget.scrollToBottom()
 
     def textMove(self, playbackMove=None):
         # Clear error label

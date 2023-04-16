@@ -246,6 +246,7 @@ class Piece(QGraphicsPixmapItem):
         # Check the checkmate
         isCheckmate = self.scene().logic.isCheckmate(not self.scene().logic.activePlayer == "light")
         if isCheckmate:
+            self.scene().refreshHistoryBlock()
             self.scene().gameOver()
 
     # ----------------------------

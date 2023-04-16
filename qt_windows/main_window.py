@@ -6,10 +6,10 @@ import sqlite3
 from xml.dom import minidom
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from PySide2.QtCore import QFile, QEvent
+from PySide2.QtCore import QFile, QEvent, Qt
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QLineEdit, QAction, QDialog, QLabel, QStyle, \
-    QFileDialog, QMenu, QPushButton, QTextEdit
+    QFileDialog, QMenu, QTableWidget, QHeaderView, QGroupBox
 from PySide2.QtGui import QBrush, QPixmap, QIcon, QTransform
 
 from qt_windows.start_dialog import StartDialog
@@ -27,7 +27,7 @@ class MainWindow(QMainWindow):
         self.initUI('data/ui/main_window_ui.ui', ':/pieces/yellow/k', 'Chess Gaming Platform')
 
         # UI components initializing and configuration
-        self.errorLabel, self.playerInputLineEdit, self.historyBlockTextEdit = self.initTextElems()
+        self.errorLabel, self.playerInputLineEdit, self.historyBlockTableWidget = self.initTextElems()
         self.boardView, self.clock1View, self.clock2View = self.initViews()
         self.saveHistoryMenu = self.initGameMenu()
         self.settingsMenu = self.initSettingsMenu()
@@ -58,9 +58,21 @@ class MainWindow(QMainWindow):
     def initTextElems(self):
         errorLabel = self.findChild(QLabel, 'errors')
         playerInputLineEdit = self.findChild(QLineEdit, 'input')
-        historyBlockTextEdit = self.findChild(QTextEdit, 'historyBlock')
 
-        return errorLabel, playerInputLineEdit, historyBlockTextEdit
+        historyBlockTableWidget = self.findChild(QTableWidget, 'historyBlock')
+        historyBlockTableWidget.setHorizontalHeaderLabels(['Light Side', 'Dark Side'])
+        historyBlockTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        historyBlockTableWidget.resizeColumnsToContents()
+
+        header = historyBlockTableWidget.horizontalHeader()
+        headerFont = header.font()
+        headerFont.setBold(True)
+        header.setFont(headerFont)
+
+        groupBoxHistoryLayout = self.findChild(QGroupBox, 'groupBoxHistory').layout()
+        groupBoxHistoryLayout.setAlignment(historyBlockTableWidget, Qt.AlignCenter)
+
+        return errorLabel, playerInputLineEdit, historyBlockTableWidget
 
     def initViews(self):
         boardView = self.findChild(QGraphicsView, 'board')
@@ -150,7 +162,7 @@ class MainWindow(QMainWindow):
             self.clock2View.viewport().update()
             self.playerInputLineEdit.returnPressed.disconnect()
             self.errorLabel.clear()
-            self.historyBlockTextEdit.setHtml("")
+            self.historyBlockTableWidget.setRowCount(0)
 
             self.createScenes()  # Create new scenes
             self.board.logic.activePlayer = "light"  # Setting active player
