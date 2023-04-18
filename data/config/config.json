@@ -1,23 +1,23 @@
 {
     "style": {
         "board": {
-            "boardStyle": "wood"
+            "boardStyle": "standard"
         },
         "pieces": {
-            "lightSideStyle": "yellow",
-            "darkSideStyle": "blue"
+            "lightSideStyle": "light",
+            "darkSideStyle": "dark"
         }
     },
     "initial": {
         "time": {
-            "hour": 2,
-            "minute": 5,
+            "hour": 0,
+            "minute": 30,
             "second": 30
         },
-        "mode": "AI",
+        "mode": "2 players",
         "network": {
-            "ip": "127.0.0.0",
-            "port": "5555"
+            "ip": "192.168.31.50",
+            "port": "5000"
         }
     }
 }

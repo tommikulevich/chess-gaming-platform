@@ -9,6 +9,7 @@ class ChessLogic:
         self.textBoard = np.full((8, 8), ".", dtype=str)
         self.moveHistory = []
         self.activePlayer = None
+        self.lastMove = None
 
         # Flags
         self.playerMoved = False
@@ -43,7 +44,8 @@ class ChessLogic:
             "Start new game first!",
             "You can't do a promotion now!",
             "Castling is not possible!",
-            "You can't do the capture!"
+            "You can't do the capture!",
+            "Wait for opponent's move!"
         ]
 
         return errors[ind]
@@ -129,7 +131,9 @@ class ChessLogic:
         if self.isInCheck(not self.activePlayer == 'light')[2]:
             sanMove += '#' if self.isCheckmate(not self.activePlayer == 'light') else '+'
 
-        # Add move to the history
+        # Remember and add performed move to the history
+        self.lastMove = f"{startX}{startY}{newX}{newY}"
+        self.lastMove += f"{self.promotionPiece}" if self.promotionPiece else ""
         self.moveHistory.append(sanMove)
 
     def testMovePiece(self, startX, startY, newX, newY):
@@ -349,19 +353,21 @@ class ChessLogic:
         self.setPiece(x, y, newPieceName)
 
     def getCastlingMoves(self, x, y):
+        king = self.getPiece(x, y)
+        kingSide = "light" if king.isupper() else "dark"
         moves = []
 
         # Check if the king has already been moved
-        if self.castling[self.activePlayer]['kingMoved']:
+        if self.castling[kingSide]['kingMoved']:
             return moves
 
-        isLight = (self.activePlayer == "light")
+        isLight = (kingSide == "light")
 
-        if not self.castling[self.activePlayer]['leftRookMoved']:
+        if not self.castling[kingSide]['leftRookMoved']:
             if self.isPathClear(x, y, "left") and not self.isKingCrossingAttackedSquares(x, y, "left", isLight):
                 moves.append([x - 2, y])
 
-        if not self.castling[self.activePlayer]['rightRookMoved']:
+        if not self.castling[kingSide]['rightRookMoved']:
             if self.isPathClear(x, y, "right") and not self.isKingCrossingAttackedSquares(x, y, "right", isLight):
                 moves.append([x + 2, y])
 
@@ -464,7 +470,7 @@ class ChessLogic:
 
         return len(unambiguousPositions) == 1, startPos[0], startPos[1]
 
-    def coordsToSAN(self, startX, startY, newX, newY):
+    def coordsToSAN(self, startX, startY, newX, newY, promotionPiece=None):
         piece = self.getPiece(startX, startY)
         pieceType = piece.upper()
 
@@ -501,5 +507,8 @@ class ChessLogic:
 
         if self.promotionPiece:
             sanMove += '=' + self.promotionPiece.upper()
+
+        if promotionPiece:
+            sanMove += '=' + promotionPiece.upper()
 
         return sanMove

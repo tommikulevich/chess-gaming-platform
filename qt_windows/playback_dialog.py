@@ -99,7 +99,7 @@ class PlaybackDialog(QDialog):
     def nextMove(self):
         move = self.movesHistory[self.currentMoveIndex]     # Get move
         self.moveLabel.setText(f"Move: {move}")
-        self.mainWindow.board.textMove(playbackMove=move)   # Perform move
+        self.mainWindow.board.textMove(text=move)  # Perform move
 
         # Setting the end time of a move on the player's clock
         if self.currentMoveIndex % 2 == 0 and self.currentMoveIndex // 2 < len(self.clock1History):  # 'light' side

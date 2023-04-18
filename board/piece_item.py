@@ -243,12 +243,6 @@ class Piece(QGraphicsPixmapItem):
         self.changeCheckKingTexture(startX, startY, *self.scene().logic.isCheck("light"))
         self.changeCheckKingTexture(startX, startY, *self.scene().logic.isCheck("dark"))
 
-        # Check the checkmate
-        isCheckmate = self.scene().logic.isCheckmate(not self.scene().logic.activePlayer == "light")
-        if isCheckmate:
-            self.scene().refreshHistoryBlock()
-            self.scene().gameOver()
-
     # ----------------------------
     # Clicking and dragging events
     # ----------------------------
@@ -258,10 +252,16 @@ class Piece(QGraphicsPixmapItem):
             return
 
         self.scene().errorLabel.clear()     # Clear error label
+        self.scene().errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
 
         # Check if the game has not started or is over
         if self.scene().logic.activePlayer is None:
             self.scene().errorLabel.setText(self.scene().logic.getError(7))
+            return
+
+        # Check if the player tries to move his pieces if it's not his turn
+        if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+            self.scene().errorLabel.setText(self.scene().logic.getError(11))
             return
 
         # Check if the player tries to move an opponent's piece
@@ -291,6 +291,11 @@ class Piece(QGraphicsPixmapItem):
         if self.scene().logic.activePlayer is None or self.scene().logic.activePlayer != self.side:
             return
 
+        # Check if the player tries to move his pieces if it's not his turn
+        if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+            self.scene().errorLabel.setText(self.scene().logic.getError(11))
+            return
+
         # Check if the player has already made a move
         if self.scene().logic.playerMoved:
             return
@@ -303,6 +308,11 @@ class Piece(QGraphicsPixmapItem):
     def mouseReleaseEvent(self, event):
         # Check if the new game has not started or a player tries to move an opponent's piece
         if self.scene().logic.activePlayer is None or self.scene().logic.activePlayer != self.side:
+            return
+
+        # Check if the player tries to move his pieces if it's not his turn
+        if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+            self.scene().errorLabel.setText(self.scene().logic.getError(11))
             return
 
         # Check if the player has already made a move

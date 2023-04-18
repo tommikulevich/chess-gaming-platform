@@ -124,16 +124,36 @@ class Board(QGraphicsScene):
         if self.logic.activePlayer != player:
             return
 
+        # Check if the player tries to move his pieces if it's not his turn
+        if self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+            self.errorLabel.setText(self.logic.getError(11))
+            return
+
         # Check if the player has not yet made a move
         if not self.logic.playerMoved:
             self.errorLabel.setText(self.logic.getError(6))
             return
 
         # Change active player and set clocks
-        self.changeActivePlayer()
-        self.setClocks(player)
+        self.changeActivePlayer(player)
 
-    def setClocks(self, player):
+        # TCP/IP support
+        if self.mainWindow.mode == "2 players":
+            self.mainWindow.client.sendData(self.logic.lastMove)    # Send last performed move
+
+            # Change active online player. Send end of turn time to "synchronize" timers
+            if self.mainWindow.netActivePlayer == "light":
+                time = self.mainWindow.clock1.leftTime
+                leftTime = f"{time.hour()}:{time.minute()}:{time.second()}:{time.msec()}"
+                self.mainWindow.client.sendData(f"time:{leftTime}")
+                self.mainWindow.netActivePlayer = "dark"
+            elif self.mainWindow.netActivePlayer == "dark":
+                time = self.mainWindow.clock2.leftTime
+                leftTime = f"{time.hour()}:{time.minute()}:{time.second()}:{time.msec()}"
+                self.mainWindow.client.sendData(f"time:{leftTime}")
+                self.mainWindow.netActivePlayer = "light"
+
+    def changeClocks(self, player):
         if player == "light":
             self.clock1.setOpacity(0.7)
             self.clock2.setOpacity(1.0)
@@ -145,13 +165,14 @@ class Board(QGraphicsScene):
             self.clock1.startTimer()
             self.clock2.pauseTimer()
 
-    def changeActivePlayer(self):
+    def changeActivePlayer(self, player):
         # Clear error label and input field. Clean playerMoved variable
         self.errorLabel.clear()
         self.playerInputLineEdit.clear()
         self.logic.playerMoved = False
 
         # Switch player
+        previousPlayer = self.logic.activePlayer
         if self.logic.activePlayer == "light":
             self.logic.activePlayer = "dark"
             self.playerInputLineEdit.setPlaceholderText("Input | Player №2")
@@ -164,6 +185,15 @@ class Board(QGraphicsScene):
 
         # Refresh history
         self.refreshHistoryBlock()
+
+        # Check the checkmate
+        isCheckmate = self.logic.isCheckmate(self.logic.activePlayer == "light")
+        if isCheckmate:
+            self.logic.activePlayer = previousPlayer
+            self.gameOver()
+            return
+
+        self.changeClocks(player)   # Set game clocks
 
     def refreshHistoryBlock(self):
         newMove = self.logic.moveHistory[-1] if self.logic.moveHistory else ""
@@ -183,14 +213,14 @@ class Board(QGraphicsScene):
         self.historyBlockTableWidget.resizeColumnsToContents()
         self.historyBlockTableWidget.scrollToBottom()
 
-    def textMove(self, playbackMove=None):
+    def textMove(self, text=None):
         # Clear error label
         self.errorLabel.clear()
         self.errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
 
         # Read and parse text move (different actions depending on whether there is playback)
-        if playbackMove:
-            moveText = playbackMove.replace("+", "").replace("#", "").replace("ep", "")  # Remove unnecessary symbols
+        if text:
+            moveText = text.replace("+", "").replace("#", "").replace("ep", "")  # Remove unnecessary symbols
         else:
             moveText = self.playerInputLineEdit.text()  # Get move from line edit
 
@@ -228,6 +258,11 @@ class Board(QGraphicsScene):
         # Check if a player tries to move an opponent's piece
         if piece.side != self.logic.activePlayer:
             self.errorLabel.setText(self.logic.getError(2))
+            return
+
+        # Check if the player tries to move his pieces if it's not his turn
+        if piece.side != self.mainWindow.netActivePlayer and self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+            self.errorLabel.setText(self.logic.getError(11))
             return
 
         # Check for failed promotion

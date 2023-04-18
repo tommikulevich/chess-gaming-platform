@@ -14,6 +14,7 @@ from PySide2.QtGui import QBrush, QPixmap, QIcon, QTransform
 
 from qt_windows.start_dialog import StartDialog
 from qt_windows.playback_dialog import PlaybackDialog
+from net.chess_client import ChessClient
 from board.board_scene import Board
 from clock.clock_item import Clock
 
@@ -22,6 +23,7 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.startDialog = None
+        self.mode = None
 
         # UI initializing and configuration
         self.initUI('data/ui/main_window_ui.ui', ':/pieces/yellow/k', 'Chess Gaming Platform')
@@ -31,6 +33,11 @@ class MainWindow(QMainWindow):
         self.boardView, self.clock1View, self.clock2View = self.initViews()
         self.saveHistoryMenu = self.initGameMenu()
         self.settingsMenu = self.initSettingsMenu()
+
+        # TCP/IP
+        self.netActivePlayer = None
+        self.ip, self.port = None, None
+        self.client = None
 
         # Create scenes
         self.board, self.clock1, self.clock2 = None, None, None
@@ -182,20 +189,35 @@ class MainWindow(QMainWindow):
             self.settingsMenu.setEnabled(True)
             self.saveHistoryMenu.setEnabled(True)
 
-            # Set clocks
-            timeHour, timeMin, timeSec = self.startDialog.getGameTime()
+            # Set parameters according to the game mode
+            self.mode = self.startDialog.getGameMode()
+            if self.mode == "1 player":
+                self.setClocks()
+            if self.mode == "2 players":    # TCP/IP
+                self.errorLabel.setText("Wait for a connection...")
+                self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
-            self.clock1.setTimer(timeHour, timeMin, timeSec)
-            self.clock1.startTimer()
-            self.clock1.setOpacity(1)
+                self.ip, self.port = self.startDialog.getNetParams()[0], int(self.startDialog.getNetParams()[1])
+                self.client = ChessClient(self.ip, self.port, self)
 
-            self.clock2.setTimer(timeHour, timeMin, timeSec)
-            self.clock2.setOpacity(0.7)
+                self.board.logic.activePlayer = None    # Server will wait for players before start
+            elif self.mode == "AI":
+                pass
 
             # Set input field
             self.playerInputLineEdit.clear()
             self.playerInputLineEdit.setReadOnly(False)
             self.playerInputLineEdit.setPlaceholderText("Input | Player №1")
+
+    def setClocks(self):
+        timeHour, timeMin, timeSec = self.startDialog.getGameTime()
+
+        self.clock1.setTimer(timeHour, timeMin, timeSec)
+        self.clock1.startTimer()
+        self.clock1.setOpacity(1)
+
+        self.clock2.setTimer(timeHour, timeMin, timeSec)
+        self.clock2.setOpacity(0.7)
 
     def startHistoryPlayback(self, movesHistory, clock1History, clock2History):
         playbackDialog = PlaybackDialog(movesHistory, clock1History, clock2History, self)
