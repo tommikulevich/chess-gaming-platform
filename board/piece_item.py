@@ -260,9 +260,10 @@ class Piece(QGraphicsPixmapItem):
             return
 
         # Check if the player tries to move his pieces if it's not his turn
-        if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
-            self.scene().errorLabel.setText(self.scene().logic.getError(11))
-            return
+        if self.scene().mainWindow.mode == "2 players":
+            if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+                self.scene().errorLabel.setText(self.scene().logic.getError(11))
+                return
 
         # Check if the player tries to move an opponent's piece
         if self.scene().logic.activePlayer != self.side:
@@ -292,9 +293,10 @@ class Piece(QGraphicsPixmapItem):
             return
 
         # Check if the player tries to move his pieces if it's not his turn
-        if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
-            self.scene().errorLabel.setText(self.scene().logic.getError(11))
-            return
+        if self.scene().mainWindow.mode == "2 players":
+            if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+                self.scene().errorLabel.setText(self.scene().logic.getError(11))
+                return
 
         # Check if the player has already made a move
         if self.scene().logic.playerMoved:
@@ -311,9 +313,10 @@ class Piece(QGraphicsPixmapItem):
             return
 
         # Check if the player tries to move his pieces if it's not his turn
-        if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
-            self.scene().errorLabel.setText(self.scene().logic.getError(11))
-            return
+        if self.scene().mainWindow.mode == "2 players":
+            if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+                self.scene().errorLabel.setText(self.scene().logic.getError(11))
+                return
 
         # Check if the player has already made a move
         if self.scene().logic.playerMoved:

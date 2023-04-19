@@ -22,8 +22,8 @@ class StartDialog(QDialog):
         # UI components initializing and configuration
         self.okButton = self.initOkButton()
         self.timeSpinBoxes = self.initGameTimeBlock()
-        self.gameModesButtonGroup = self.initGameModeBlock()
         self.netParamsLineEdit = self.initNetworkBlock()
+        self.gameModesButtonGroup = self.initGameModeBlock()
         self.statusLabel = self.initOptionalBlock()
 
         # Styles and history parameters
@@ -62,6 +62,7 @@ class StartDialog(QDialog):
     def initGameModeBlock(self):
         modeOnePlayerRadioButton = self.ui.findChild(QRadioButton, 'modeOnePlayer')
         modeTwoPlayersRadioButton = self.ui.findChild(QRadioButton, 'modeTwoPlayers')
+        modeTwoPlayersRadioButton.toggled.connect(lambda toggled: self.netParamsLineEdit.setEnabled(toggled))
         modeAiRadioButton = self.ui.findChild(QRadioButton, 'modeAi')
 
         gameModesButtonGroup = QButtonGroup()

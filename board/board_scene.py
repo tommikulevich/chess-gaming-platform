@@ -125,9 +125,10 @@ class Board(QGraphicsScene):
             return
 
         # Check if the player tries to move his pieces if it's not his turn
-        if self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
-            self.errorLabel.setText(self.logic.getError(11))
-            return
+        if self.mainWindow.mode == "2 players":
+            if self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+                self.errorLabel.setText(self.logic.getError(11))
+                return
 
         # Check if the player has not yet made a move
         if not self.logic.playerMoved:
@@ -261,9 +262,10 @@ class Board(QGraphicsScene):
             return
 
         # Check if the player tries to move his pieces if it's not his turn
-        if piece.side != self.mainWindow.netActivePlayer and self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
-            self.errorLabel.setText(self.logic.getError(11))
-            return
+        if self.mainWindow.mode == "2 players":
+            if piece.side != self.mainWindow.netActivePlayer and self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+                self.errorLabel.setText(self.logic.getError(11))
+                return
 
         # Check for failed promotion
         if promotionPiece is not None and self.logic.isPromotion(endX, endY):
