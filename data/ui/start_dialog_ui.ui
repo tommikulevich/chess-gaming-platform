@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>225</width>
+    <width>246</width>
     <height>538</height>
    </rect>
   </property>
@@ -114,19 +114,35 @@
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QLabel" name="labelNetwork">
-        <property name="text">
-         <string>IP:port</string>
+       <widget class="QComboBox" name="netComboBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
+        <item>
+         <property name="text">
+          <string>IPv4:port</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>IPv6:port</string>
+         </property>
+        </item>
        </widget>
       </item>
       <item>
        <widget class="QLineEdit" name="netParams">
         <property name="enabled">
          <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
         <property name="inputMethodHints">
          <set>Qt::ImhDialableCharactersOnly</set>
@@ -135,7 +151,7 @@
          <string>000.000.000.000:00000</string>
         </property>
         <property name="text">
-         <string>127.0.0.0:5000</string>
+         <string>127.0.0.1:5000</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>

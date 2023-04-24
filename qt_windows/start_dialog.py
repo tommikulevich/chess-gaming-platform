@@ -9,7 +9,7 @@ from PySide2.QtCore import QFile
 from PySide2.QtGui import QIcon
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtWidgets import QDialog, QLabel, QSpinBox, QDialogButtonBox, QButtonGroup, QRadioButton, QLineEdit, \
-    QPushButton, QFileDialog
+    QPushButton, QFileDialog, QComboBox
 
 
 class StartDialog(QDialog):
@@ -22,7 +22,7 @@ class StartDialog(QDialog):
         # UI components initializing and configuration
         self.okButton = self.initOkButton()
         self.timeSpinBoxes = self.initGameTimeBlock()
-        self.netParamsLineEdit = self.initNetworkBlock()
+        self.netComboBox, self.netParamsLineEdit = self.initNetworkBlock()
         self.gameModesButtonGroup = self.initGameModeBlock()
         self.statusLabel = self.initOptionalBlock()
 
@@ -74,8 +74,22 @@ class StartDialog(QDialog):
 
     def initNetworkBlock(self):
         netParamsLineEdit = self.ui.findChild(QLineEdit, 'netParams')
+        netComboBox = self.ui.findChild(QComboBox, 'netComboBox')
+        netComboBox.currentTextChanged.connect(self.setIpMask)
 
-        return netParamsLineEdit
+        return netComboBox, netParamsLineEdit
+
+    def setIpMask(self, ipVersion):
+        if ipVersion == "IPv4:port":
+            self.netParamsLineEdit.setInputMask("000.000.000.000:00000")
+            self.netParamsLineEdit.setText("127.0.0.1:5000")
+            self.netParamsLineEdit.setMinimumWidth(self.netParamsLineEdit.fontMetrics().boundingRect(
+                "000.000.000.000:00000").width())
+        elif ipVersion == "IPv6:port":
+            self.netParamsLineEdit.setInputMask("")
+            self.netParamsLineEdit.setText("::1:5000")
+            self.netParamsLineEdit.setMinimumWidth(self.netParamsLineEdit.fontMetrics().boundingRect(
+                "0000:0000:0000:0000:0000:0000:0000:0000:000000").width())
 
     def initOptionalBlock(self):
         jsonButton = self.ui.findChild(QPushButton, 'jsonButton')
@@ -97,7 +111,8 @@ class StartDialog(QDialog):
         return self.gameModesButtonGroup.checkedButton().text()
 
     def getNetParams(self):
-        return self.netParamsLineEdit.text().split(':')
+        netParams = self.netParamsLineEdit.text().split(':')
+        return ':'.join(netParams[:-1]), netParams[-1]
 
     def getStylesFromConfig(self):
         return tuple(self.stylesFromConfig.values())
@@ -155,7 +170,15 @@ class StartDialog(QDialog):
 
         # Network configuration
         netConfig = initialBlock.get("network", {})
+
         ip = netConfig.get("ip", "")
+        ipv4Pattern = re.compile(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
+        ipv6Pattern = re.compile(r'^(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}|::([0-9a-fA-F]{0,4}:){0,6}[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,6}:|([0-9a-fA-F]{0,4}:){1,5}:[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,4}(:[0-9a-fA-F]{0,4}){1,2}|([0-9a-fA-F]{0,4}:){1,3}(:[0-9a-fA-F]{0,4}){1,3}|([0-9a-fA-F]{0,4}:){1,2}(:[0-9a-fA-F]{0,4}){1,4}|[0-9a-fA-F]{0,4}:((:[0-9a-fA-F]{0,4}){1,5}|:)|:((:[0-9a-fA-F]{0,4}){1,6}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$')
+        if ipv4Pattern.match(ip):
+            self.netComboBox.setCurrentText("IPv4:port")
+        elif ipv6Pattern.match(ip):
+            self.netComboBox.setCurrentText("IPv6:port")
+
         port = netConfig.get("port", "")
         self.netParamsLineEdit.setText(f"{ip}:{port}")
 
@@ -197,13 +220,18 @@ class StartDialog(QDialog):
 
         # 1) IP
         ip = netConfig.get("ip", "")
-        ipPattern = re.compile(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
-        matchIP = ipPattern.match(ip)
+        ipv4Pattern = re.compile(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
+        ipv6Pattern = re.compile(r'^(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}|::([0-9a-fA-F]{0,4}:){0,6}[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,6}:|([0-9a-fA-F]{0,4}:){1,5}:[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,4}(:[0-9a-fA-F]{0,4}){1,2}|([0-9a-fA-F]{0,4}:){1,3}(:[0-9a-fA-F]{0,4}){1,3}|([0-9a-fA-F]{0,4}:){1,2}(:[0-9a-fA-F]{0,4}){1,4}|[0-9a-fA-F]{0,4}:((:[0-9a-fA-F]{0,4}){1,5}|:)|:((:[0-9a-fA-F]{0,4}){1,6}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$')
+        matchIPv4 = ipv4Pattern.match(ip)
+        matchIPv6 = ipv6Pattern.match(ip)
 
-        if matchIP:
-            groups = matchIP.groups()
+        if matchIPv4:
+            groups = matchIPv4.groups()
 
             if not all(0 <= int(group) <= 255 for group in groups):
+                errors.append("ip")
+        elif matchIPv6:
+            if ip.count('::') > 1:
                 errors.append("ip")
         else:
             errors.append("ip")
