@@ -1,14 +1,20 @@
 import itertools
-from PySide2.QtCore import QSize, Qt, QRect
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
+
+from PySide2.QtCore import QSize, Qt, QRect, Signal
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QGraphicsScene, QMessageBox, QApplication, QStyle, QTableWidgetItem
 
 from board.tile_item import Tile
 from board.piece_item import Piece
 from logic.chess_logic import ChessLogic
+from bot.chess_bot import ChessBot
 
 
 class Board(QGraphicsScene):
+    botMoveReady = Signal(tuple)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.mainWindow = parent
@@ -19,6 +25,11 @@ class Board(QGraphicsScene):
 
         # Logic initializing
         self.logic = ChessLogic()
+
+        # Bot initializing
+        self.chessBot = None
+        self.botSide = None
+        self.botMoveReady.connect(self.makeBotMove)
 
         # Create tiles and pieces
         self.createTiles()
@@ -124,9 +135,15 @@ class Board(QGraphicsScene):
         if self.logic.activePlayer != player:
             return
 
-        # Check if the player tries to move his pieces if it's not his turn
+        # Check if the player tries to move his pieces if it's not his turn (network mode)
         if self.mainWindow.mode == "2 players":
             if self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+                self.errorLabel.setText(self.logic.getError(11))
+                return
+
+        # Check if the player tries to move his pieces if it's not his turn (bot mode)
+        if self.mainWindow.mode == "AI":
+            if self.logic.activePlayer == self.botSide:
                 self.errorLabel.setText(self.logic.getError(11))
                 return
 
@@ -196,6 +213,13 @@ class Board(QGraphicsScene):
 
         self.changeClocks(player)   # Set game clocks
 
+        # Bot support
+        if self.mainWindow.mode == "AI":
+            if self.logic.activePlayer == self.botSide:
+                executor = ProcessPoolExecutor(max_workers=multiprocessing.cpu_count())
+                future = executor.submit(self.chessBot.getBotMove, self.logic)
+                future.add_done_callback(self.botMove)
+
     def refreshHistoryBlock(self):
         newMove = self.logic.moveHistory[-1] if self.logic.moveHistory else ""
         rowCount = self.historyBlockTableWidget.rowCount()
@@ -261,9 +285,15 @@ class Board(QGraphicsScene):
             self.errorLabel.setText(self.logic.getError(2))
             return
 
-        # Check if the player tries to move his pieces if it's not his turn
+        # Check if the player tries to move his pieces if it's not his turn (network mode)
         if self.mainWindow.mode == "2 players":
             if piece.side != self.mainWindow.netActivePlayer and self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+                self.errorLabel.setText(self.logic.getError(11))
+                return
+
+        # Check if the player tries to move his pieces if it's not his turn (bot mode)
+        if self.mainWindow.mode == "AI":
+            if piece.side == self.botSide and self.logic.activePlayer != self.botSide:
                 self.errorLabel.setText(self.logic.getError(11))
                 return
 
@@ -291,6 +321,27 @@ class Board(QGraphicsScene):
 
         self.showGameOverMessage()
         self.logic.activePlayer = None
+
+    # -----------
+    # Bot support
+    # -----------
+
+    def startBot(self):
+        self.chessBot = ChessBot()
+
+    def botMove(self, future=None):
+        move = future.result()
+        self.botMoveReady.emit(move)
+
+    def makeBotMove(self, move):
+        startX, startY, newX, newY = map(int, move[:4])
+        promotionPiece = move[4] if len(move) > 4 else None
+        sanMove = self.logic.coordsToSAN(startX, startY, newX, newY, promotionPiece)
+        self.textMove(sanMove)
+
+        # self.botSide = 'light' if self.botSide == 'dark' else 'dark'  # Test game bot-bot
+        self.changeActivePlayer(self.logic.activePlayer)
+        print(f"[Bot Log] Move: {move} | {sanMove}")
 
     # ------------------
     # Additional windows

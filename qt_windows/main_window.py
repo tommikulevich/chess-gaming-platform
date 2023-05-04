@@ -202,7 +202,9 @@ class MainWindow(QMainWindow):
 
                 self.board.logic.activePlayer = None    # Server will wait for players before start
             elif self.mode == "AI":
-                pass
+                self.setClocks()
+                self.board.botSide = "dark"
+                self.board.startBot()
 
             # Set input field
             self.playerInputLineEdit.clear()

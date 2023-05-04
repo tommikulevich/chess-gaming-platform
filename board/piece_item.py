@@ -259,9 +259,15 @@ class Piece(QGraphicsPixmapItem):
             self.scene().errorLabel.setText(self.scene().logic.getError(7))
             return
 
-        # Check if the player tries to move his pieces if it's not his turn
+        # Check if the player tries to move his pieces if it's not his turn (network mode)
         if self.scene().mainWindow.mode == "2 players":
             if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+                self.scene().errorLabel.setText(self.scene().logic.getError(11))
+                return
+
+        # Check if the player tries to move his pieces if it's not his turn (bot mode)
+        if self.scene().mainWindow.mode == "AI":
+            if self.scene().logic.activePlayer == self.scene().botSide:
                 self.scene().errorLabel.setText(self.scene().logic.getError(11))
                 return
 
@@ -292,9 +298,15 @@ class Piece(QGraphicsPixmapItem):
         if self.scene().logic.activePlayer is None or self.scene().logic.activePlayer != self.side:
             return
 
-        # Check if the player tries to move his pieces if it's not his turn
+        # Check if the player tries to move his pieces if it's not his turn (network mode)
         if self.scene().mainWindow.mode == "2 players":
             if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+                self.scene().errorLabel.setText(self.scene().logic.getError(11))
+                return
+
+        # Check if the player tries to move his pieces if it's not his turn (bot mode)
+        if self.scene().mainWindow.mode == "AI":
+            if self.scene().logic.activePlayer == self.scene().botSide:
                 self.scene().errorLabel.setText(self.scene().logic.getError(11))
                 return
 
@@ -315,6 +327,12 @@ class Piece(QGraphicsPixmapItem):
         # Check if the player tries to move his pieces if it's not his turn
         if self.scene().mainWindow.mode == "2 players":
             if self.scene().mainWindow.netActivePlayer != self.scene().mainWindow.client.playerNick:
+                self.scene().errorLabel.setText(self.scene().logic.getError(11))
+                return
+
+        # Check if the player tries to move his pieces if it's not his turn (bot mode)
+        if self.scene().mainWindow.mode == "AI":
+            if self.scene().logic.activePlayer == self.scene().botSide:
                 self.scene().errorLabel.setText(self.scene().logic.getError(11))
                 return
 
