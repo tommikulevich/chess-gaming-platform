@@ -22,6 +22,7 @@ from clock.clock_item import Clock
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.isPlayback = False
         self.startDialog = None
         self.mode = None
 
@@ -222,6 +223,7 @@ class MainWindow(QMainWindow):
         self.clock2.setOpacity(0.7)
 
     def startHistoryPlayback(self, movesHistory, clock1History, clock2History):
+        self.isPlayback = True
         playbackDialog = PlaybackDialog(movesHistory, clock1History, clock2History, self)
         playbackDialog.ui.exec_()
 

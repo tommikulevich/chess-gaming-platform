@@ -211,7 +211,8 @@ class Board(QGraphicsScene):
             self.gameOver()
             return
 
-        self.changeClocks(player)   # Set game clocks
+        if not self.mainWindow.isPlayback:
+            self.changeClocks(player)   # Set game clocks
 
         # Bot support
         if self.mainWindow.mode == "AI":

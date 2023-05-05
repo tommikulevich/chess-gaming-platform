@@ -43,7 +43,7 @@ class Clock(QGraphicsEllipseItem):
         # If timer ends - game is over
         if self.leftTime <= QTime(0, 0, 0, 0):
             self.timer.stop()
-            self.mainWindow.board.changeActivePlayer()
+            self.mainWindow.board.changeActivePlayer(self.mainWindow.board.logic.activePlayer)
             self.mainWindow.board.gameOver()
 
         self.update()

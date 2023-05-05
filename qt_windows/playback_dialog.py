@@ -85,6 +85,7 @@ class PlaybackDialog(QDialog):
         self.playbackTimer.stop()
 
         self.mainWindow.board.logic.activePlayer = None
+        self.mainWindow.isPlayback = False
         self.mainWindow.settingsMenu.setEnabled(False)
         self.mainWindow.saveHistoryMenu.setEnabled(False)
         self.mainWindow.playerInputLineEdit.setPlaceholderText("Playback ended!")
@@ -116,4 +117,4 @@ class PlaybackDialog(QDialog):
             self.endPlayback()
             return
 
-        self.mainWindow.board.changeActivePlayer()  # Change player (needed for performing move)
+        self.mainWindow.board.changeActivePlayer(self.mainWindow.board.logic.activePlayer)  # Change player (needed for performing move)
