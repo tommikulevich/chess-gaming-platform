@@ -1,16 +1,19 @@
 import os
 from datetime import datetime
+from typing import Any, Optional, Tuple, List
 
 import json
 import sqlite3
 from xml.dom import minidom
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from PySide2.QtCore import QFile, QEvent, Qt
 from PySide2.QtUiTools import QUiLoader
-from PySide2.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QLineEdit, QAction, QDialog, QLabel, QStyle, \
-    QFileDialog, QMenu, QTableWidget, QHeaderView, QGroupBox
-from PySide2.QtGui import QBrush, QPixmap, QIcon, QTransform
+from PySide2.QtCore import (QFile, QEvent, Qt)
+from PySide2.QtGui import (QBrush, QPixmap, QIcon, QTransform)
+from PySide2.QtWidgets import (
+    QMainWindow, QGraphicsView, QGraphicsScene, QLineEdit, QAction, QDialog,
+    QLabel, QStyle, QFileDialog, QMenu, QTableWidget, QHeaderView, QGroupBox
+)
 
 from qt_windows.start_dialog import StartDialog
 from qt_windows.playback_dialog import PlaybackDialog
@@ -20,17 +23,38 @@ from clock.clock_item import Clock
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, parent=None):
+    isPlayback: bool
+    startDialog: Optional[StartDialog]
+    mode: Optional[str]
+    errorLabel: QLabel
+    playerInputLineEdit: QLineEdit
+    historyBlockTableWidget: QTableWidget
+    boardView: QGraphicsView
+    clock1View: QGraphicsView
+    clock2View: QGraphicsView
+    saveHistoryMenu: QMenu
+    settingsMenu: QMenu
+    netActivePlayer: Optional[str]
+    ip: Optional[str]
+    port: Optional[int]
+    client: Optional[ChessClient]
+    board: Board
+    clock1: Clock
+    clock2: Clock
+
+    def __init__(self, parent: Optional[Any] = None) -> None:
         super().__init__(parent)
         self.isPlayback = False
         self.startDialog = None
         self.mode = None
 
         # UI initializing and configuration
-        self.initUI('data/ui/main_window_ui.ui', ':/pieces/yellow/k', 'Chess Gaming Platform')
+        self.initUI('ui/main_window_ui.ui', ':/pieces/yellow/k',
+                    'Chess Gaming Platform')
 
         # UI components initializing and configuration
-        self.errorLabel, self.playerInputLineEdit, self.historyBlockTableWidget = self.initTextElems()
+        self.errorLabel, self.playerInputLineEdit, \
+            self.historyBlockTableWidget = self.initTextElems()
         self.boardView, self.clock1View, self.clock2View = self.initViews()
         self.saveHistoryMenu = self.initGameMenu()
         self.settingsMenu = self.initSettingsMenu()
@@ -50,7 +74,7 @@ class MainWindow(QMainWindow):
     # Window initializing
     # -------------------
 
-    def initUI(self, uiPath, uiIcon, uiName):
+    def initUI(self, uiPath: str, uiIcon: str, uiName: str) -> Any:
         uiFile = QFile(uiPath)
         uiFile.open(QFile.ReadOnly)
         ui = QUiLoader().load(uiFile, None)  # Loading ui from .ui file
@@ -63,13 +87,15 @@ class MainWindow(QMainWindow):
 
         return ui
 
-    def initTextElems(self):
+    def initTextElems(self) -> Tuple[QLabel, QLineEdit, QTableWidget]:
         errorLabel = self.findChild(QLabel, 'errors')
         playerInputLineEdit = self.findChild(QLineEdit, 'input')
 
         historyBlockTableWidget = self.findChild(QTableWidget, 'historyBlock')
-        historyBlockTableWidget.setHorizontalHeaderLabels(['Light Side', 'Dark Side'])
-        historyBlockTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        historyBlockTableWidget.setHorizontalHeaderLabels(['Light Side',
+                                                           'Dark Side'])
+        historyBlockTableWidget.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Fixed)
         historyBlockTableWidget.resizeColumnsToContents()
 
         header = historyBlockTableWidget.horizontalHeader()
@@ -77,12 +103,14 @@ class MainWindow(QMainWindow):
         headerFont.setBold(True)
         header.setFont(headerFont)
 
-        groupBoxHistoryLayout = self.findChild(QGroupBox, 'groupBoxHistory').layout()
-        groupBoxHistoryLayout.setAlignment(historyBlockTableWidget, Qt.AlignCenter)
+        groupBoxHistoryLayout = \
+            self.findChild(QGroupBox, 'groupBoxHistory').layout()
+        groupBoxHistoryLayout.setAlignment(historyBlockTableWidget,
+                                           Qt.AlignCenter)
 
         return errorLabel, playerInputLineEdit, historyBlockTableWidget
 
-    def initViews(self):
+    def initViews(self) -> Tuple[QGraphicsView, QGraphicsView, QGraphicsView]:
         boardView = self.findChild(QGraphicsView, 'board')
         boardView.installEventFilter(self)
         clock1View = self.findChild(QGraphicsView, 'clock1')
@@ -90,13 +118,15 @@ class MainWindow(QMainWindow):
 
         return boardView, clock1View, clock2View
 
-    def initGameMenu(self):
+    def initGameMenu(self) -> QMenu:
         startGameAction = self.findChild(QAction, 'startGame')
         startGameAction.triggered.connect(self.startNewGame)
-        startGameAction.setIcon(self.style().standardIcon(QStyle.SP_ArrowForward))
+        startGameAction.setIcon(
+            self.style().standardIcon(QStyle.SP_ArrowForward))
 
         saveHistoryMenu = self.findChild(QMenu, 'saveGameHistory')
-        saveHistoryMenu.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+        saveHistoryMenu.setIcon(
+            self.style().standardIcon(QStyle.SP_DialogSaveButton))
 
         xmlSaveAction = self.findChild(QAction, 'xmlSave')
         xmlSaveAction.triggered.connect(self.xmlSaveHistory)
@@ -104,44 +134,50 @@ class MainWindow(QMainWindow):
 
         sqliteSaveAction = self.findChild(QAction, 'sqliteSave')
         sqliteSaveAction.triggered.connect(self.sqliteSave)
-        sqliteSaveAction.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        sqliteSaveAction.setIcon(
+            self.style().standardIcon(QStyle.SP_MediaPlay))
 
         return saveHistoryMenu
 
-    def initSettingsMenu(self):
+    def initSettingsMenu(self) -> QMenu:
         settingsMenu = self.findChild(QMenu, 'settings')
 
         saveConfigAction = self.findChild(QAction, 'saveConfig')
         saveConfigAction.triggered.connect(self.saveConfig)
-        saveConfigAction.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+        saveConfigAction.setIcon(
+            self.style().standardIcon(QStyle.SP_DialogSaveButton))
 
         loadStyleAction = self.findChild(QAction, 'loadStyle')
         loadStyleAction.triggered.connect(self.loadStylesFromConfig)
-        loadStyleAction.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        loadStyleAction.setIcon(
+            self.style().standardIcon(QStyle.SP_DialogOpenButton))
 
         return settingsMenu
 
-    def createScenes(self):
+    def createScenes(self) -> None:
         # Create clock for the first player ('light' side)
         self.clock1 = Clock(parent=self)
         self.clock1View.setScene(QGraphicsScene(self))
-        self.clock1View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
+        self.clock1View.scene().setBackgroundBrush(
+            QBrush(QPixmap(":/board/wood/light")))
         self.clock1View.scene().addItem(self.clock1)
 
         # Create clock for the second player ('dark' side)
         self.clock2 = Clock(parent=self)
         self.clock2View.setScene(QGraphicsScene(self))
-        self.clock2View.scene().setBackgroundBrush(QBrush(QPixmap(":/board/wood/light")))
+        self.clock2View.scene().setBackgroundBrush(
+            QBrush(QPixmap(":/board/wood/light")))
         self.clock2View.scene().addItem(self.clock2)
 
         # Create board
         self.board = Board(self)
         self.boardView.setScene(self.board)
 
-    def eventFilter(self, source, event):
+    def eventFilter(self, source: Any, event: QEvent) -> bool:
         if source == self.boardView and event.type() == QEvent.Resize:
             baseWidth, baseHeight = 800, 800
-            scaleX, scaleY = float(self.boardView.width()) / baseWidth, float(self.boardView.height()) / baseHeight
+            scaleX, scaleY = float(self.boardView.width()) / baseWidth, \
+                float(self.boardView.height()) / baseHeight
             transform = QTransform()
             transform.scale(scaleX, scaleY)
             self.boardView.setTransform(transform)
@@ -152,10 +188,11 @@ class MainWindow(QMainWindow):
     # Start new game/playback
     # -----------------------
 
-    def startNewGame(self):
-        self.startDialog = StartDialog(self)    # Show start window with game options
+    def startNewGame(self) -> None:
+        # Show start window with game options
+        self.startDialog = StartDialog(self)
 
-        # Start new game if accepted - clear scenes and create new elements and items
+        # Start new game if accepted: clear scenes and create new elems / items
         if self.startDialog.ui.exec_() == QDialog.Accepted:
             # Stop clocks to avoid errors
             self.clock1.timer.stop()
@@ -198,10 +235,12 @@ class MainWindow(QMainWindow):
                 self.errorLabel.setText("Wait for a connection...")
                 self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
-                self.ip, self.port = self.startDialog.getNetParams()[0], int(self.startDialog.getNetParams()[1])
+                self.ip, self.port = self.startDialog.getNetParams()[0], \
+                    int(self.startDialog.getNetParams()[1])
                 self.client = ChessClient(self.ip, self.port, self)
 
-                self.board.logic.activePlayer = None    # Server will wait for players before start
+                # Server will wait for players before start
+                self.board.logic.activePlayer = None
             elif self.mode == "AI":
                 self.setClocks()
                 self.board.botSide = "dark"
@@ -212,7 +251,7 @@ class MainWindow(QMainWindow):
             self.playerInputLineEdit.setReadOnly(False)
             self.playerInputLineEdit.setPlaceholderText("Input | Player №1")
 
-    def setClocks(self):
+    def setClocks(self) -> None:
         timeHour, timeMin, timeSec = self.startDialog.getGameTime()
 
         self.clock1.setTimer(timeHour, timeMin, timeSec)
@@ -222,20 +261,26 @@ class MainWindow(QMainWindow):
         self.clock2.setTimer(timeHour, timeMin, timeSec)
         self.clock2.setOpacity(0.7)
 
-    def startHistoryPlayback(self, movesHistory, clock1History, clock2History):
+    def startHistoryPlayback(self, movesHistory: List[str],
+                             clock1History: List[Tuple[int, int, int, int]],
+                             clock2History: List[Tuple[int, int, int, int]]) \
+            -> None:
         self.isPlayback = True
-        playbackDialog = PlaybackDialog(movesHistory, clock1History, clock2History, self)
+        playbackDialog = PlaybackDialog(movesHistory, clock1History,
+                                        clock2History, self)
         playbackDialog.ui.exec_()
 
     # --------------
     # Config support
     # --------------
 
-    def loadStylesFromConfig(self):
+    def loadStylesFromConfig(self) -> None:
         # Choose config file (json)
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        configPath, _ = QFileDialog.getOpenFileName(self, "Open Config File", "data/config", "JSON Files (*.json)", options=options)
+        configPath, _ = QFileDialog.getOpenFileName(
+            self, "Open Config File", "config", "JSON Files (*.json)",
+            options=options)
 
         # Check if the config file exists
         if not os.path.isfile(configPath):
@@ -248,9 +293,11 @@ class MainWindow(QMainWindow):
             config = json.load(file)
 
         # Validate config parameters
-        errors = self.validateStylesFromConfig(config)  # Config parameters validation
+        errors = self.validateStylesFromConfig(config)
         if errors:
-            self.errorLabel.setText("Invalid config parameters (" + ", ".join(errors) + ").\nLoading failed!")
+            self.errorLabel.setText(
+                "Invalid config parameters ("
+                + ", ".join(errors) + ").\nLoading failed!")
             self.errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
             return
 
@@ -272,7 +319,7 @@ class MainWindow(QMainWindow):
         self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
     @staticmethod
-    def validateStylesFromConfig(config):
+    def validateStylesFromConfig(config: Any) -> List[str]:
         errors = []
         style = config.get("style", {})
 
@@ -288,18 +335,20 @@ class MainWindow(QMainWindow):
         lightSideStyle = pieces.get("lightSideStyle", "light")
         darkSideStyle = pieces.get("darkSideStyle", "dark")
         if lightSideStyle not in ["light", "blue", "green", "red", "yellow"] \
-                or darkSideStyle not in ["dark", "blue", "green", "red", "yellow"]\
+                or darkSideStyle not in \
+                ["dark", "blue", "green", "red", "yellow"] \
                 or lightSideStyle == darkSideStyle:
             errors.append("pieces style")
 
         return errors
 
-    def saveConfig(self):
+    def saveConfig(self) -> None:
         # Select file to save config (json)
         currentDatetime = datetime.now()
         formattedDatetime = currentDatetime.strftime("%d-%m-%Y_%H-%M-%S")
-        fileName = f"data/config/config_{formattedDatetime}.json"
-        configPath, _ = QFileDialog.getSaveFileName(self, "Save Config File", fileName, "JSON (*.json)")
+        fileName = f"config/config_{formattedDatetime}.json"
+        configPath, _ = QFileDialog.getSaveFileName(self, "Save Config File",
+                                                    fileName, "JSON (*.json)")
         config = {}
 
         # Check if no file was selected
@@ -346,7 +395,7 @@ class MainWindow(QMainWindow):
     # History support
     # ---------------
 
-    def xmlSaveHistory(self):
+    def xmlSaveHistory(self) -> None:
         # Creating XML element representing a move with the given move and time
         def createMoveElem(move, time):
             moveElem = Element('move')
@@ -358,8 +407,9 @@ class MainWindow(QMainWindow):
         # Select file to save history (xml)
         currentDatetime = datetime.now()
         formattedDatetime = currentDatetime.strftime("%d-%m-%Y_%H-%M-%S")
-        fileName = f"data/history/history_{formattedDatetime}.xml"
-        xmlPath, _ = QFileDialog.getSaveFileName(self, "Save History", fileName, "XML (*.xml)")
+        fileName = f"history/history_{formattedDatetime}.xml"
+        xmlPath, _ = QFileDialog.getSaveFileName(self, "Save History",
+                                                 fileName, "XML (*.xml)")
 
         # Check if no file was selected
         if not xmlPath:
@@ -375,7 +425,8 @@ class MainWindow(QMainWindow):
         movesElem.extend(moves)
 
         # Write XML structure to file
-        xmlPretty = minidom.parseString(tostring(game)).toprettyxml(indent='\t')
+        xmlPretty = minidom.parseString(
+            tostring(game)).toprettyxml(indent='\t')
         with open(xmlPath, 'w') as f:
             f.write(xmlPretty)
 
@@ -383,12 +434,13 @@ class MainWindow(QMainWindow):
         self.errorLabel.setText("History in XML saved successfully!")
         self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
-    def sqliteSave(self):
+    def sqliteSave(self) -> None:
         # Select file to save history (database)
         currentDatetime = datetime.now()
         formattedDatetime = currentDatetime.strftime("%d-%m-%Y_%H-%M-%S")
-        fileName = f"data/history/history_{formattedDatetime}.db"
-        dbPath, _ = QFileDialog.getSaveFileName(self, "Save History", fileName, "SQLite Database (*.db *.sqlite)")
+        fileName = f"history/history_{formattedDatetime}.db"
+        dbPath, _ = QFileDialog.getSaveFileName(
+            self, "Save History", fileName, "SQLite Database (*.db *.sqlite)")
 
         # Check if no file was selected
         if not dbPath:
@@ -412,7 +464,8 @@ class MainWindow(QMainWindow):
             ''')
 
         # Insert game data into history table
-        [cursor.execute('INSERT INTO history (move, end_time) VALUES (?, ?)', (move, endTime)) for move, endTime in history]
+        [cursor.execute('INSERT INTO history (move, end_time) VALUES (?, ?)',
+                        (move, endTime)) for move, endTime in history]
 
         # Apply changes to database and close connection
         conn.commit()
@@ -422,7 +475,7 @@ class MainWindow(QMainWindow):
         self.errorLabel.setText("History in SQLite3 saved successfully!")
         self.errorLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
-    def getAllHistory(self):
+    def getAllHistory(self) -> List[Tuple[str, str]]:
         # Format time tuple into a string with the format 'hh:mm:ss:zz'
         def formatTime(time):
             if time is None:
@@ -437,9 +490,12 @@ class MainWindow(QMainWindow):
 
         # Combining moves and time histories
         allHistory = [
-            (move, formatTime(clock1History[i // 2]) if i % 2 == 0 and i // 2 < len(clock1History)
-             else formatTime(clock2History[i // 2]) if i % 2 == 1 and i // 2 < len(clock2History)
-             else '') for i, move in enumerate(movesHistory)
+            (move, formatTime(clock1History[i // 2])
+             if i % 2 == 0 and i // 2 < len(clock1History)
+             else formatTime(clock2History[i // 2])
+             if i % 2 == 1 and i // 2 < len(clock2History)
+             else '')
+            for i, move in enumerate(movesHistory)
         ]
 
         return allHistory

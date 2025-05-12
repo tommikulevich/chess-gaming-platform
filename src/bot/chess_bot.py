@@ -1,19 +1,27 @@
-import numpy as np
 import copy
+import numpy as np
+from typing import List, Tuple, Optional, Union
+
+from logic.chess_logic import ChessLogic
 
 
 class ChessBot:
-    def __init__(self, depth=3):
-        self.depth = depth
+    def __init__(self, depth: int = 3) -> None:
+        self.depth: int = depth
 
-    def getBotMove(self, logic):
-        bestMove, bestValue = self.minimax(logic, self.depth, float('-inf'), float('inf'))
+    def getBotMove(self, logic: ChessLogic) \
+            -> Optional[Tuple[Union[int, str], ...]]:
+        bestMove, _ = self.minimax(logic, self.depth,
+                                   float('-inf'), float('inf'))
         if bestMove is None:
             return None
 
         return tuple(bestMove)
 
-    def minimax(self, logic, depth, alpha, beta):
+    def minimax(self, logic: ChessLogic, depth: int,
+                alpha: float, beta: float) \
+            -> Tuple[Optional[Union[List[Union[int, str]],
+                                    Tuple[Union[int, str], ...]]], float]:
         player = logic.activePlayer
         if depth == 0 or logic.isCheckmate(player != 'light'):
             return None, self.evaluateBoard(logic)
@@ -28,7 +36,7 @@ class ChessBot:
                 newLogic.movePiece(*move)
 
                 if newLogic.isPromotion(move[2], move[3]):
-                    promotePiece = 'q'  # Queen is the most valuable in promotion
+                    promotePiece = 'q'   # Queen is most valuable in promotion
                     newLogic.promotePawn(move[2], move[3], promotePiece)
                     move = move + (promotePiece,)
 
@@ -52,7 +60,7 @@ class ChessBot:
                 newLogic.movePiece(*move)
 
                 if newLogic.isPromotion(move[2], move[3]):
-                    promotePiece = 'q'  # Queen is the most valuable in promotion
+                    promotePiece = 'q'  # Queen is most valuable in promotion
                     newLogic.promotePawn(move[2], move[3], promotePiece)
                     move = move + (promotePiece,)
 
@@ -70,14 +78,18 @@ class ChessBot:
             return bestMove, minValue
 
     @staticmethod
-    def getAllLegalMoves(logic):
+    def getAllLegalMoves(logic: ChessLogic) -> List[Tuple[int, int, int, int]]:
         player = logic.activePlayer
-        pieces = np.where(np.char.isupper(logic.textBoard)) if player == 'light' else np.where(np.char.islower(logic.textBoard))
-        moves = [(y, x, move[0], move[1]) for x, y in zip(*pieces) for move in logic.getLegalMoves(y, x)]
+        pieces = np.where(np.char.isupper(logic.textBoard)) \
+            if player == 'light' \
+            else np.where(np.char.islower(logic.textBoard))
+        moves = [(y, x, move[0], move[1])
+                 for x, y in zip(*pieces)
+                 for move in logic.getLegalMoves(y, x)]
         return moves
 
     @staticmethod
-    def evaluateBoard(logic):
+    def evaluateBoard(logic: ChessLogic) -> int:
         pieceValues = {
             'P': 100, 'p': -100,
             'N': 320, 'n': -320,
@@ -89,6 +101,7 @@ class ChessBot:
         board = logic.textBoard
         unique, counts = np.unique(board, return_counts=True)
         pieceCounts = dict(zip(unique, counts))
-        value = sum(pieceValues.get(piece, 0) * count for piece, count in pieceCounts.items())
+        value = sum(pieceValues.get(piece, 0) * count
+                    for piece, count in pieceCounts.items())
 
         return value

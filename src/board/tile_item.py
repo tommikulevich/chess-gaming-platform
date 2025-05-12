@@ -1,6 +1,6 @@
-from PySide2.QtCore import QPointF, QRect, QSize
-from PySide2.QtGui import QColor, QPen, QFont, QPixmap
-from PySide2.QtWidgets import QGraphicsItem, QMenu, QAction
+from PySide2.QtCore import (QPointF, QRect, QSize)
+from PySide2.QtGui import (QColor, QPen, QFont, QPixmap)
+from PySide2.QtWidgets import (QGraphicsItem, QMenu, QAction)
 
 
 class Tile(QGraphicsItem):
@@ -42,9 +42,10 @@ class Tile(QGraphicsItem):
 
     def paint(self, painter, option, widget=None):
         # Choose the texture depending on the flags
-        texture = (self.validTexture if self.showValid else
-                   self.checkTexture if self.showCheck else
-                   self.lightTexture if (self.x + self.y) % 2 == 0 else self.darkTexture)
+        texture = (self.validTexture if self.showValid
+                   else self.checkTexture if self.showCheck
+                   else self.lightTexture if (self.x + self.y) % 2 == 0
+                   else self.darkTexture)
         painter.drawPixmap(self.boundingRect(), texture)
 
         pen = QPen()
@@ -60,14 +61,16 @@ class Tile(QGraphicsItem):
 
         # Draw A-H files
         if self.y == 0:
-            painter.drawText(QPointF(self.size - 19, self.size / 5 + 1), chr(65 + self.x))
+            painter.drawText(QPointF(self.size - 19, self.size / 5 + 1),
+                             chr(65 + self.x))
 
         # Draw 1-8 ranks
         if self.x == 0:
             painter.drawText(QPointF(6, self.size / 5 + 1), str(8 - self.y))
 
     def changeTileTexture(self, boardStyle):
-        [self.updateTileItem(item, boardStyle) for item in self.scene().items() if isinstance(item, Tile)]
+        [self.updateTileItem(item, boardStyle) for item in self.scene().items()
+         if isinstance(item, Tile)]
 
     @staticmethod
     def updateTileItem(tile, boardStyle):
@@ -92,8 +95,11 @@ class Tile(QGraphicsItem):
         boardStyleMenu.addAction(woodBoardAction)
         menu.addMenu(boardStyleMenu)
 
-        standardBoardAction.triggered.connect(lambda: self.changeTileTexture("standard"))
-        rockBoardAction.triggered.connect(lambda: self.changeTileTexture("rock"))
-        woodBoardAction.triggered.connect(lambda: self.changeTileTexture("wood"))
+        standardBoardAction.triggered.connect(
+            lambda: self.changeTileTexture("standard"))
+        rockBoardAction.triggered.connect(
+            lambda: self.changeTileTexture("rock"))
+        woodBoardAction.triggered.connect(
+            lambda: self.changeTileTexture("wood"))
 
         menu.exec_(event.screenPos())
