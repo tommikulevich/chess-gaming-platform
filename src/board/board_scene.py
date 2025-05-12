@@ -1,24 +1,32 @@
 import itertools
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
+from typing import Any, Tuple, Optional, Union
 
-from PySide2.QtCore import QSize, Qt, QRect, Signal
-from PySide2.QtGui import QIcon
-from PySide2.QtWidgets import QGraphicsScene, QMessageBox, QApplication, QStyle, QTableWidgetItem
+from PySide2.QtCore import (QSize, Qt, QRect, Signal)
+from PySide2.QtGui import (QIcon)
+from PySide2.QtWidgets import (
+    QGraphicsScene, QMessageBox, QApplication, QStyle, QTableWidgetItem
+)
 
 from board.tile_item import Tile
 from board.piece_item import Piece
 from logic.chess_logic import ChessLogic
 from bot.chess_bot import ChessBot
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from qt_windows.main_window import MainWindow
+else:
+    MainWindow = Any
 
 
 class Board(QGraphicsScene):
     botMoveReady = Signal(tuple)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: MainWindow) -> None:
         super().__init__(parent)
         self.mainWindow = parent
-
         # Board parameters
         self.boardSize = QSize(8, 8)
         self.tileSize = 100
@@ -27,8 +35,8 @@ class Board(QGraphicsScene):
         self.logic = ChessLogic()
 
         # Bot initializing
-        self.chessBot = None
-        self.botSide = None
+        self.chessBot: Optional[ChessBot] = None
+        self.botSide: Optional[str] = None
         self.botMoveReady.connect(self.makeBotMove)
 
         # Create tiles and pieces
@@ -41,7 +49,7 @@ class Board(QGraphicsScene):
         self.clock1.onClick = lambda event: self.endPlayerMove(event, "light")
         self.clock2.onClick = lambda event: self.endPlayerMove(event, "dark")
 
-        # Connect signals to error and input fields when players provide commands
+        # Connect signals to error and input fields when players provide cmds
         self.historyBlockTableWidget = self.mainWindow.historyBlockTableWidget
         self.errorLabel = self.mainWindow.errorLabel
         self.playerInputLineEdit = self.mainWindow.playerInputLineEdit
@@ -52,15 +60,16 @@ class Board(QGraphicsScene):
     # Creating scene items
     # ---------------------
 
-    def createTiles(self):
+    def createTiles(self) -> None:
         width, height = self.boardSize.width(), self.boardSize.height()
-        [self.addItem(Tile(self.tileSize, i, j)) for i, j in itertools.product(range(width), range(height))]
+        for i, j in itertools.product(range(width), range(height)):
+            self.addItem(Tile(self.tileSize, i, j))
 
-    def createPieces(self):
+    def createPieces(self) -> None:
         self.createSide("light", 7, 6)
         self.createSide("dark", 0, 1)
 
-    def createSide(self, side, firstRow, secondRow):
+    def createSide(self, side: str, firstRow: int, secondRow: int) -> None:
         piece = "R" if side == "light" else "r"
         self.addItem(Piece(piece, side, 0, firstRow, self.tileSize))
         self.logic.setPiece(0, firstRow, piece)
@@ -94,31 +103,39 @@ class Board(QGraphicsScene):
         self.logic.setPiece(7, firstRow, piece)
 
         piece = "P" if side == "light" else "p"
-        [self.addItem(Piece(piece, side, x, secondRow, self.tileSize)) for x in range(self.boardSize.width())]
-        [self.logic.setPiece(x, secondRow, piece) for x in range(self.boardSize.width())]
+        for x in range(self.boardSize.width()):
+            self.addItem(Piece(piece, side, x, secondRow, self.tileSize))
+        for x in range(self.boardSize.width()):
+            self.logic.setPiece(x, secondRow, piece)
 
     # ---------------
     # Config support
     # ---------------
 
-    def applyStyleConfig(self, boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig):
+    def applyStyleConfig(self, boardStyleConfig: str,
+                         lightSideStyleConfig: str,
+                         darkSideStyleConfig: str) -> None:
         tile = [item for item in self.items() if isinstance(item, Tile)][0]
         tile.changeTileTexture(boardStyleConfig)
 
-        lightPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "light"][0]
+        lightPiece = [item for item in self.items() if isinstance(item, Piece)
+                      and item.side == "light"][0]
         lightPiece.changePieceTexture(lightSideStyleConfig, "light")
 
-        darkPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "dark"][0]
+        darkPiece = [item for item in self.items() if isinstance(item, Piece)
+                     and item.side == "dark"][0]
         darkPiece.changePieceTexture(darkSideStyleConfig, "dark")
 
-    def getStyleConfig(self):
+    def getStyleConfig(self) -> Tuple[str, str, str]:
         tile = [item for item in self.items() if isinstance(item, Tile)][0]
         boardStyleConfig = tile.boardStyleDark.split("/")[2]
 
-        lightPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "light"][0]
+        lightPiece = [item for item in self.items() if isinstance(item, Piece)
+                      and item.side == "light"][0]
         lightSideStyleConfig = lightPiece.pieceTheme
 
-        darkPiece = [item for item in self.items() if isinstance(item, Piece) and item.side == "dark"][0]
+        darkPiece = [item for item in self.items() if isinstance(item, Piece)
+                     and item.side == "dark"][0]
         darkSideStyleConfig = darkPiece.pieceTheme
 
         return boardStyleConfig, lightSideStyleConfig, darkSideStyleConfig
@@ -127,7 +144,7 @@ class Board(QGraphicsScene):
     # Game components
     # ---------------
 
-    def endPlayerMove(self, event, player):
+    def endPlayerMove(self, event: Any, player: str) -> None:
         if event.button() != Qt.LeftButton:
             return
 
@@ -135,13 +152,16 @@ class Board(QGraphicsScene):
         if self.logic.activePlayer != player:
             return
 
-        # Check if the player tries to move his pieces if it's not his turn (network mode)
+        # Check if the player tries to move his pieces if it's not his turn
+        # (network mode)
         if self.mainWindow.mode == "2 players":
-            if self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+            if self.mainWindow.netActivePlayer \
+                    != self.mainWindow.client.playerNick:
                 self.errorLabel.setText(self.logic.getError(11))
                 return
 
-        # Check if the player tries to move his pieces if it's not his turn (bot mode)
+        # Check if the player tries to move his pieces if it's not his turn
+        # (bot mode)
         if self.mainWindow.mode == "AI":
             if self.logic.activePlayer == self.botSide:
                 self.errorLabel.setText(self.logic.getError(11))
@@ -157,21 +177,29 @@ class Board(QGraphicsScene):
 
         # TCP/IP support
         if self.mainWindow.mode == "2 players":
-            self.mainWindow.client.sendData(self.logic.lastMove)    # Send last performed move
+            # Send last performed move
+            self.mainWindow.client.sendData(self.logic.lastMove)
 
-            # Change active online player. Send end of turn time to "synchronize" timers
+            # Change active online player
+            # Send end of turn time to "synchronize" timers
             if self.mainWindow.netActivePlayer == "light":
                 time = self.mainWindow.clock1.leftTime
-                leftTime = f"{time.hour()}:{time.minute()}:{time.second()}:{time.msec()}"
+                leftTime = (
+                    f"{time.hour()}:{time.minute()}"
+                    f":{time.second()}:{time.msec()}"
+                )
                 self.mainWindow.client.sendData(f"time:{leftTime}")
                 self.mainWindow.netActivePlayer = "dark"
             elif self.mainWindow.netActivePlayer == "dark":
                 time = self.mainWindow.clock2.leftTime
-                leftTime = f"{time.hour()}:{time.minute()}:{time.second()}:{time.msec()}"
+                leftTime = (
+                    f"{time.hour()}:{time.minute()}"
+                    f":{time.second()}:{time.msec()}"
+                )
                 self.mainWindow.client.sendData(f"time:{leftTime}")
                 self.mainWindow.netActivePlayer = "light"
 
-    def changeClocks(self, player):
+    def changeClocks(self, player: str) -> None:
         if player == "light":
             self.clock1.setOpacity(0.7)
             self.clock2.setOpacity(1.0)
@@ -183,7 +211,7 @@ class Board(QGraphicsScene):
             self.clock1.startTimer()
             self.clock2.pauseTimer()
 
-    def changeActivePlayer(self, player):
+    def changeActivePlayer(self, player: str) -> None:
         # Clear error label and input field. Clean playerMoved variable
         self.errorLabel.clear()
         self.playerInputLineEdit.clear()
@@ -199,13 +227,16 @@ class Board(QGraphicsScene):
             self.playerInputLineEdit.setPlaceholderText("Input | Player №1")
 
         # Clean all legalMoves variables from all pieces
-        [piece.__setattr__('legalMoves', []) for piece in self.items() if isinstance(piece, Piece)]
+        for piece in self.items():
+            if isinstance(piece, Piece):
+                piece.__setattr__('legalMoves', [])
 
         # Refresh history
         self.refreshHistoryBlock()
 
         # Check the checkmate
-        isCheckmate = self.logic.isCheckmate(self.logic.activePlayer == "light")
+        isCheckmate = self.logic.isCheckmate(
+            self.logic.activePlayer == "light")
         if isCheckmate:
             self.logic.activePlayer = previousPlayer
             self.gameOver()
@@ -215,13 +246,14 @@ class Board(QGraphicsScene):
             self.changeClocks(player)   # Set game clocks
 
         # Bot support
-        if self.mainWindow.mode == "AI":
+        if self.mainWindow.mode == "AI" and self.chessBot:
             if self.logic.activePlayer == self.botSide:
-                executor = ProcessPoolExecutor(max_workers=multiprocessing.cpu_count())
+                executor = ProcessPoolExecutor(
+                    max_workers=multiprocessing.cpu_count())
                 future = executor.submit(self.chessBot.getBotMove, self.logic)
                 future.add_done_callback(self.botMove)
 
-    def refreshHistoryBlock(self):
+    def refreshHistoryBlock(self) -> None:
         newMove = self.logic.moveHistory[-1] if self.logic.moveHistory else ""
         rowCount = self.historyBlockTableWidget.rowCount()
 
@@ -239,16 +271,19 @@ class Board(QGraphicsScene):
         self.historyBlockTableWidget.resizeColumnsToContents()
         self.historyBlockTableWidget.scrollToBottom()
 
-    def textMove(self, text=None):
+    def textMove(self, text: Optional[str] = None) -> None:
         # Clear error label
         self.errorLabel.clear()
         self.errorLabel.setStyleSheet("color:rgb(227, 11, 92)")
 
-        # Read and parse text move (different actions depending on whether there is playback)
+        # Read and parse text move
+        # (different actions depending on whether there is playback)
         if text:
-            moveText = text.replace("+", "").replace("#", "").replace("ep", "")  # Remove unnecessary symbols
+            # Remove unnecessary symbols
+            moveText = text.replace("+", "").replace("#", "").replace("ep", "")
         else:
-            moveText = self.playerInputLineEdit.text()  # Get move from line edit
+            # Get move from line edit
+            moveText = self.playerInputLineEdit.text()
 
             # Check if the player has already made a move
             if self.logic.playerMoved:
@@ -270,8 +305,10 @@ class Board(QGraphicsScene):
         # Move processing after parsing
         startX, startY, endX, endY, promotionPiece = move
 
-        field = QRect(startX * self.tileSize, startY * self.tileSize, self.tileSize, self.tileSize)
-        piece = [piece for piece in self.items(field) if (isinstance(piece, Piece))]
+        field = QRect(startX * self.tileSize, startY * self.tileSize,
+                      self.tileSize, self.tileSize)
+        piece = [piece for piece in self.items(field)
+                 if (isinstance(piece, Piece))]
 
         # Check if there are no pieces that can make that movement
         if not piece:
@@ -286,15 +323,20 @@ class Board(QGraphicsScene):
             self.errorLabel.setText(self.logic.getError(2))
             return
 
-        # Check if the player tries to move his pieces if it's not his turn (network mode)
+        # Check if the player tries to move his pieces if it's not his turn
+        # (network mode)
         if self.mainWindow.mode == "2 players":
-            if piece.side != self.mainWindow.netActivePlayer and self.mainWindow.netActivePlayer != self.mainWindow.client.playerNick:
+            if piece.side != self.mainWindow.netActivePlayer \
+                    and self.mainWindow.netActivePlayer \
+                    != self.mainWindow.client.playerNick:
                 self.errorLabel.setText(self.logic.getError(11))
                 return
 
-        # Check if the player tries to move his pieces if it's not his turn (bot mode)
+        # Check if the player tries to move his pieces if it's not his turn
+        # (bot mode)
         if self.mainWindow.mode == "AI":
-            if piece.side == self.botSide and self.logic.activePlayer != self.botSide:
+            if piece.side == self.botSide \
+                    and self.logic.activePlayer != self.botSide:
                 self.errorLabel.setText(self.logic.getError(11))
                 return
 
@@ -310,7 +352,7 @@ class Board(QGraphicsScene):
         # Clear input field
         self.playerInputLineEdit.clear()
 
-    def gameOver(self):
+    def gameOver(self) -> None:
         # Stop the game and show game over message
         self.clock1.timer.stop()
         self.clock2.timer.stop()
@@ -327,20 +369,23 @@ class Board(QGraphicsScene):
     # Bot support
     # -----------
 
-    def startBot(self):
+    def startBot(self) -> None:
         self.chessBot = ChessBot()
 
-    def botMove(self, future=None):
+    def botMove(self, future: Any = None) -> None:
         move = future.result()
         self.botMoveReady.emit(move)
 
-    def makeBotMove(self, move):
+    def makeBotMove(self, move: Tuple[Union[int, str], ...]) -> None:
         startX, startY, newX, newY = map(int, move[:4])
         promotionPiece = move[4] if len(move) > 4 else None
-        sanMove = self.logic.coordsToSAN(startX, startY, newX, newY, promotionPiece)
+        sanMove = self.logic.coordsToSAN(startX, startY, newX, newY,
+                                         promotionPiece)
         self.textMove(sanMove)
 
-        # self.botSide = 'light' if self.botSide == 'dark' else 'dark'  # Test game bot-bot
+        # Test game bot-bot
+        # self.botSide = 'light' if self.botSide == 'dark' else 'dark'
+
         self.changeActivePlayer(self.logic.activePlayer)
         print(f"[Bot Log] Move: {move} | {sanMove}")
 
@@ -348,9 +393,10 @@ class Board(QGraphicsScene):
     # Additional windows
     # ------------------
 
-    def showGameOverMessage(self):
+    def showGameOverMessage(self) -> None:
         msg = QMessageBox(self.views()[0])
-        msg.setWindowIcon(QIcon(QApplication.instance().style().standardPixmap(QStyle.SP_FileDialogInfoView)))
+        msg.setWindowIcon(QIcon(QApplication.instance().style().standardPixmap(
+            QStyle.SP_FileDialogInfoView)))
         msg.setIcon(QMessageBox.Information)
         msg.setText(f"Winner: {self.logic.activePlayer} side!")
         msg.setWindowTitle("Game over")

@@ -1,23 +1,40 @@
 import os
 import re
+from typing import Any, Optional, Tuple, List, Dict, TYPE_CHECKING
 
 import json
 import sqlite3
 from xml.etree.ElementTree import parse
 
-from PySide2.QtCore import QFile
-from PySide2.QtGui import QIcon
 from PySide2.QtUiTools import QUiLoader
-from PySide2.QtWidgets import QDialog, QLabel, QSpinBox, QDialogButtonBox, QButtonGroup, QRadioButton, QLineEdit, \
-    QPushButton, QFileDialog, QComboBox
+from PySide2.QtCore import (QFile)
+from PySide2.QtGui import (QIcon)
+from PySide2.QtWidgets import (
+    QDialog, QLabel, QSpinBox, QDialogButtonBox, QButtonGroup, QRadioButton,
+    QLineEdit, QPushButton, QFileDialog, QComboBox)
+
+if TYPE_CHECKING:
+    from qt_windows.main_window import MainWindow
+else:
+    MainWindow = Any
 
 
 class StartDialog(QDialog):
-    def __init__(self, parent=None):
+    ui: Any
+    okButton: QPushButton
+    timeSpinBoxes: Tuple[QSpinBox, QSpinBox, QSpinBox]
+    netComboBox: QComboBox
+    netParamsLineEdit: QLineEdit
+    gameModesButtonGroup: QButtonGroup
+    statusLabel: QLabel
+    stylesFromConfig: Dict[str, Optional[str]]
+    historyFromFile: Dict[str, List[Any]]
+
+    def __init__(self, parent: Optional[MainWindow] = None) -> None:
         super().__init__(parent)
 
         # UI initializing and configuration
-        self.ui = self.initUI('data/ui/start_dialog_ui.ui', ':/pieces/yellow/k')
+        self.ui = self.initUI('ui/start_dialog_ui.ui', ':/pieces/yellow/k')
 
         # UI components initializing and configuration
         self.okButton = self.initOkButton()
@@ -27,15 +44,19 @@ class StartDialog(QDialog):
         self.statusLabel = self.initOptionalBlock()
 
         # Styles and history parameters
-        self.stylesFromConfig = {"boardStyle": None, "lightSideStyle": None, "darkSideStyle": None}
-        self.historyFromFile = {"movesHistory": [], "clock1History": [], "clock2History": []}
+        self.stylesFromConfig = {"boardStyle": None,
+                                 "lightSideStyle": None,
+                                 "darkSideStyle": None}
+        self.historyFromFile = {"movesHistory": [],
+                                "clock1History": [],
+                                "clock2History": []}
 
     # -------------------
     # Window initializing
     # -------------------
 
     @staticmethod
-    def initUI(uiPath, uiIcon):
+    def initUI(uiPath: str, uiIcon: str) -> Any:
         uiFile = QFile(uiPath)
         uiFile.open(QFile.ReadOnly)
         ui = QUiLoader().load(uiFile, None)     # Loading ui from .ui file
@@ -44,7 +65,7 @@ class StartDialog(QDialog):
 
         return ui
 
-    def initOkButton(self):
+    def initOkButton(self) -> QPushButton:
         okButton = self.ui.findChild(QDialogButtonBox, 'ok')
         okButton.accepted.connect(self.ui.accept)
         okButton.rejected.connect(self.ui.reject)
@@ -52,17 +73,20 @@ class StartDialog(QDialog):
 
         return okButton
 
-    def initGameTimeBlock(self):
+    def initGameTimeBlock(self) -> Tuple[QSpinBox, QSpinBox, QSpinBox]:
         timeHourSpinBox = self.ui.findChild(QSpinBox, 'timeHour')
         timeMinSpinBox = self.ui.findChild(QSpinBox, 'timeMin')
         timeSecSpinBox = self.ui.findChild(QSpinBox, 'timeSec')
 
         return timeHourSpinBox, timeMinSpinBox, timeSecSpinBox
 
-    def initGameModeBlock(self):
-        modeOnePlayerRadioButton = self.ui.findChild(QRadioButton, 'modeOnePlayer')
-        modeTwoPlayersRadioButton = self.ui.findChild(QRadioButton, 'modeTwoPlayers')
-        modeTwoPlayersRadioButton.toggled.connect(lambda toggled: self.netParamsLineEdit.setEnabled(toggled))
+    def initGameModeBlock(self) -> QButtonGroup:
+        modeOnePlayerRadioButton = self.ui.findChild(QRadioButton,
+                                                     'modeOnePlayer')
+        modeTwoPlayersRadioButton = self.ui.findChild(QRadioButton,
+                                                      'modeTwoPlayers')
+        modeTwoPlayersRadioButton.toggled.connect(
+            lambda toggled: self.netParamsLineEdit.setEnabled(toggled))
         modeAiRadioButton = self.ui.findChild(QRadioButton, 'modeAi')
 
         gameModesButtonGroup = QButtonGroup()
@@ -72,26 +96,28 @@ class StartDialog(QDialog):
 
         return gameModesButtonGroup
 
-    def initNetworkBlock(self):
+    def initNetworkBlock(self) -> Tuple[QComboBox, QLineEdit]:
         netParamsLineEdit = self.ui.findChild(QLineEdit, 'netParams')
         netComboBox = self.ui.findChild(QComboBox, 'netComboBox')
         netComboBox.currentTextChanged.connect(self.setIpMask)
 
         return netComboBox, netParamsLineEdit
 
-    def setIpMask(self, ipVersion):
+    def setIpMask(self, ipVersion: str) -> None:
         if ipVersion == "IPv4:port":
             self.netParamsLineEdit.setInputMask("000.000.000.000:00000")
             self.netParamsLineEdit.setText("127.0.0.1:5000")
-            self.netParamsLineEdit.setMinimumWidth(self.netParamsLineEdit.fontMetrics().boundingRect(
-                "000.000.000.000:00000").width())
+            self.netParamsLineEdit.setMinimumWidth(
+                self.netParamsLineEdit.fontMetrics().boundingRect(
+                    "000.000.000.000:00000").width())
         elif ipVersion == "IPv6:port":
             self.netParamsLineEdit.setInputMask("")
             self.netParamsLineEdit.setText("::1:5000")
-            self.netParamsLineEdit.setMinimumWidth(self.netParamsLineEdit.fontMetrics().boundingRect(
-                "0000:0000:0000:0000:0000:0000:0000:0000:000000").width())
+            self.netParamsLineEdit.setMinimumWidth(
+                self.netParamsLineEdit.fontMetrics().boundingRect(
+                    "0000:0000:0000:0000:0000:0000:0000:0000:000000").width())
 
-    def initOptionalBlock(self):
+    def initOptionalBlock(self) -> QLabel:
         jsonButton = self.ui.findChild(QPushButton, 'jsonButton')
         historyButton = self.ui.findChild(QPushButton, 'historyButton')
         statusLabel = self.ui.findChild(QLabel, 'statusLabel')
@@ -104,36 +130,40 @@ class StartDialog(QDialog):
     # Getting options, history and config parameters
     # ----------------------------------------------
 
-    def getGameTime(self):
+    def getGameTime(self) -> Tuple[int, int, int]:
         return tuple(spinBox.value() for spinBox in self.timeSpinBoxes)
 
-    def getGameMode(self):
+    def getGameMode(self) -> str:
         return self.gameModesButtonGroup.checkedButton().text()
 
-    def getNetParams(self):
+    def getNetParams(self) -> Tuple[str, str]:
         netParams = self.netParamsLineEdit.text().split(':')
         return ':'.join(netParams[:-1]), netParams[-1]
 
-    def getStylesFromConfig(self):
+    def getStylesFromConfig(self) -> Tuple[Optional[str],
+                                           Optional[str],
+                                           Optional[str]]:
         return tuple(self.stylesFromConfig.values())
 
-    def getHistoryFromFiles(self):
+    def getHistoryFromFiles(self) -> Tuple[List[Any], List[Any], List[Any]]:
         return tuple(self.historyFromFile.values())
 
     # --------------------------
     # Loading config and history
     # --------------------------
 
-    def loadConfig(self):
+    def loadConfig(self) -> None:
         # Select config file (json)
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        configPath, _ = QFileDialog.getOpenFileName(self, "Open Config File", "data/config",
-                                                    "JSON Files (*.json)", options=options)
+        configPath, _ = QFileDialog.getOpenFileName(
+            self, "Open Config File", "config", "JSON Files (*.json)",
+            options=options)
 
         # Check if the config file exists
         if not os.path.isfile(configPath):
-            self.statusLabel.setText("Status: Config file not found or not selected!")
+            self.statusLabel.setText(
+                "Status: Config file not found or not selected!")
             self.statusLabel.setStyleSheet("color:rgb(227, 11, 92)")
             return
 
@@ -144,7 +174,9 @@ class StartDialog(QDialog):
         # Validate config parameters
         errors = self.validateConfig(config)
         if errors:
-            self.statusLabel.setText("Status: Invalid config parameters (" + ", ".join(errors) + ").\nLoading failed!")
+            self.statusLabel.setText(
+                "Status: Invalid config parameters ("
+                + ", ".join(errors) + ").\nLoading failed!")
             self.statusLabel.setStyleSheet("color:rgb(227, 11, 92)")
             return
 
@@ -172,8 +204,28 @@ class StartDialog(QDialog):
         netConfig = initialBlock.get("network", {})
 
         ip = netConfig.get("ip", "")
-        ipv4Pattern = re.compile(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
-        ipv6Pattern = re.compile(r'^(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}|::([0-9a-fA-F]{0,4}:){0,6}[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,6}:|([0-9a-fA-F]{0,4}:){1,5}:[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,4}(:[0-9a-fA-F]{0,4}){1,2}|([0-9a-fA-F]{0,4}:){1,3}(:[0-9a-fA-F]{0,4}){1,3}|([0-9a-fA-F]{0,4}:){1,2}(:[0-9a-fA-F]{0,4}){1,4}|[0-9a-fA-F]{0,4}:((:[0-9a-fA-F]{0,4}){1,5}|:)|:((:[0-9a-fA-F]{0,4}){1,6}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$')
+        ipv4Pattern = re.compile(
+            r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
+        ipv6Pattern = re.compile(
+            r'^('
+            r'([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}|'
+            r'::([0-9a-fA-F]{0,4}:){0,6}[0-9a-fA-F]{0,4}|'
+            r'([0-9a-fA-F]{0,4}:){1,6}:|'
+            r'([0-9a-fA-F]{0,4}:){1,5}:[0-9a-fA-F]{0,4}|'
+            r'([0-9a-fA-F]{0,4}:){1,4}(:[0-9a-fA-F]{0,4}){1,2}|'
+            r'([0-9a-fA-F]{0,4}:){1,3}(:[0-9a-fA-F]{0,4}){1,3}|'
+            r'([0-9a-fA-F]{0,4}:){1,2}(:[0-9a-fA-F]{0,4}){1,4}|'
+            r'[0-9a-fA-F]{0,4}:((:[0-9a-fA-F]{0,4}){1,5}|:)|'
+            r':((:[0-9a-fA-F]{0,4}){1,6}|:)|'
+            r'fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|'
+            r'::(ffff(:0{1,4}){0,1}:){0,1}'
+            r'((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}'
+            r'(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|'
+            r'([0-9a-fA-F]{1,4}:){1,4}:'
+            r'((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}'
+            r'(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])'
+            r')$'
+        )
         if ipv4Pattern.match(ip):
             self.netComboBox.setCurrentText("IPv4:port")
         elif ipv6Pattern.match(ip):
@@ -184,17 +236,20 @@ class StartDialog(QDialog):
 
         # Style configuration
         boardBlock = styleBlock.get("board", {})
-        self.stylesFromConfig["boardStyle"] = boardBlock.get("boardStyle", "standard")
+        self.stylesFromConfig["boardStyle"] = \
+            boardBlock.get("boardStyle", "standard")
 
         piecesBlock = styleBlock.get("pieces", {})
-        self.stylesFromConfig["lightSideStyle"] = piecesBlock.get("lightSideStyle", "light")
-        self.stylesFromConfig["darkSideStyle"] = piecesBlock.get("darkSideStyle", "dark")
+        self.stylesFromConfig["lightSideStyle"] = \
+            piecesBlock.get("lightSideStyle", "light")
+        self.stylesFromConfig["darkSideStyle"] = \
+            piecesBlock.get("darkSideStyle", "dark")
 
         # Update status
         self.statusLabel.setText("Status: Config loaded successfully!")
         self.statusLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
-    def validateConfig(self, config):
+    def validateConfig(self, config: Any) -> List[str]:
         errors = []
 
         initialBlock = config.get("initial", {})
@@ -207,7 +262,8 @@ class StartDialog(QDialog):
         second = timeConfig.get("second", 0)
         timeValues = (hour, minute, second)
 
-        if not all(self.timeSpinBoxes[i].minimum() <= timeValues[i] <= self.timeSpinBoxes[i].maximum() for i in range(3)):
+        if not all(self.timeSpinBoxes[i].minimum() <= timeValues[i]
+                   <= self.timeSpinBoxes[i].maximum() for i in range(3)):
             errors.append("time")
 
         # Check game mode
@@ -220,8 +276,28 @@ class StartDialog(QDialog):
 
         # 1) IP
         ip = netConfig.get("ip", "")
-        ipv4Pattern = re.compile(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
-        ipv6Pattern = re.compile(r'^(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}|::([0-9a-fA-F]{0,4}:){0,6}[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,6}:|([0-9a-fA-F]{0,4}:){1,5}:[0-9a-fA-F]{0,4}|([0-9a-fA-F]{0,4}:){1,4}(:[0-9a-fA-F]{0,4}){1,2}|([0-9a-fA-F]{0,4}:){1,3}(:[0-9a-fA-F]{0,4}){1,3}|([0-9a-fA-F]{0,4}:){1,2}(:[0-9a-fA-F]{0,4}){1,4}|[0-9a-fA-F]{0,4}:((:[0-9a-fA-F]{0,4}){1,5}|:)|:((:[0-9a-fA-F]{0,4}){1,6}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$')
+        ipv4Pattern = re.compile(
+            r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
+        ipv6Pattern = re.compile(
+            r'^('
+            r'([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}|'
+            r'::([0-9a-fA-F]{0,4}:){0,6}[0-9a-fA-F]{0,4}|'
+            r'([0-9a-fA-F]{0,4}:){1,6}:|'
+            r'([0-9a-fA-F]{0,4}:){1,5}:[0-9a-fA-F]{0,4}|'
+            r'([0-9a-fA-F]{0,4}:){1,4}(:[0-9a-fA-F]{0,4}){1,2}|'
+            r'([0-9a-fA-F]{0,4}:){1,3}(:[0-9a-fA-F]{0,4}){1,3}|'
+            r'([0-9a-fA-F]{0,4}:){1,2}(:[0-9a-fA-F]{0,4}){1,4}|'
+            r'[0-9a-fA-F]{0,4}:((:[0-9a-fA-F]{0,4}){1,5}|:)|'
+            r':((:[0-9a-fA-F]{0,4}){1,6}|:)|'
+            r'fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|'
+            r'::(ffff(:0{1,4}){0,1}:){0,1}'
+            r'((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}'
+            r'(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|'
+            r'([0-9a-fA-F]{1,4}:){1,4}:'
+            r'((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}'
+            r'(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])'
+            r')$'
+        )
         matchIPv4 = ipv4Pattern.match(ip)
         matchIPv6 = ipv6Pattern.match(ip)
 
@@ -259,33 +335,38 @@ class StartDialog(QDialog):
         lightSideStyle = piecesBlock.get("lightSideStyle", "light")
         darkSideStyle = piecesBlock.get("darkSideStyle", "dark")
         if lightSideStyle not in ["light", "blue", "green", "red", "yellow"] \
-                or darkSideStyle not in ["dark", "blue", "green", "red", "yellow"] \
+                or darkSideStyle not in \
+                ["dark", "blue", "green", "red", "yellow"] \
                 or lightSideStyle == darkSideStyle:
             errors.append("pieces style")
 
         return errors
 
-    def loadHistory(self):
+    def loadHistory(self) -> None:
         # Select file with history (xml, db)
-        historyPath, _ = QFileDialog.getOpenFileName(self, "Load History", "data/history/",
-                                                     "History Files (*.xml *.db *.sqlite)")
+        historyPath, _ = QFileDialog.getOpenFileName(
+            self, "Load History", "history/",
+            "History Files (*.xml *.db *.sqlite)")
         # Check if no file was selected
         if not historyPath:
             return
 
         # Get history data from files
         if historyPath.endswith('.db'):
-            movesHistory, clock1History, clock2History = self.sqliteLoadHistory(historyPath)
+            movesHistory, clock1History, clock2History = \
+                self.sqliteLoadHistory(historyPath)
             self.historyFromFile["movesHistory"] = movesHistory
             self.historyFromFile["clock1History"] = clock1History
             self.historyFromFile["clock2History"] = clock2History
         elif historyPath.endswith('.xml'):
-            movesHistory, clock1History, clock2History = self.xmlLoadHistory(historyPath)
+            movesHistory, clock1History, clock2History = \
+                self.xmlLoadHistory(historyPath)
             self.historyFromFile["movesHistory"] = movesHistory
             self.historyFromFile["clock1History"] = clock1History
             self.historyFromFile["clock2History"] = clock2History
         else:
-            self.statusLabel.setText("Status: History file has invalid type, not found or not selected!")
+            self.statusLabel.setText("Status: History file has invalid type, \
+                not found or not selected!")
             self.statusLabel.setStyleSheet("color:rgb(227, 11, 92)")
 
             return
@@ -297,18 +378,23 @@ class StartDialog(QDialog):
         self.statusLabel.setText("Status: History loaded successfully!")
         self.statusLabel.setStyleSheet("color:rgb(0, 170, 0)")
 
-    def xmlLoadHistory(self, xmlPath):
+    def xmlLoadHistory(self, xmlPath: str) -> Tuple[List[str],
+                                                    List[Any],
+                                                    List[Any]]:
         # Parse XML file
         tree = parse(xmlPath)
         root = tree.getroot()
         movesElem = root.find('moves')
 
         # Extract moves and end times
-        allHistory = [(moveElem.text, moveElem.get('end_time', '')) for moveElem in movesElem.findall('move')]
+        allHistory = [(moveElem.text, moveElem.get('end_time', ''))
+                      for moveElem in movesElem.findall('move')]
 
         return self.splitAllHistory(allHistory)
 
-    def sqliteLoadHistory(self, dbPath):
+    def sqliteLoadHistory(self, dbPath: str) -> Tuple[List[str],
+                                                      List[Any],
+                                                      List[Any]]:
         # Connect to database
         conn = sqlite3.connect(dbPath)
         cursor = conn.cursor()
@@ -322,14 +408,18 @@ class StartDialog(QDialog):
         return self.splitAllHistory(allHistory)
 
     @staticmethod
-    def splitAllHistory(allHistory):
+    def splitAllHistory(allHistory: List[Tuple[str, str]]) -> Tuple[
+            List[str], List[Any], List[Any]]:
         # Split allHistory into separate lists
-        times = [tuple(map(int, time.split(':'))) if time else None for _, time in allHistory]
+        times = [tuple(map(int, time.split(':'))) if time else None
+                 for _, time in allHistory]
         clock1History = []
         clock2History = []
 
         movesHistory = [move for move, _ in allHistory]
-        clock1History.extend([time for i, time in enumerate(times) if i % 2 == 0 and time is not None])
-        clock2History.extend([time for i, time in enumerate(times) if i % 2 == 1 and time is not None])
+        clock1History.extend([time for i, time in enumerate(times)
+                              if i % 2 == 0 and time is not None])
+        clock2History.extend([time for i, time in enumerate(times)
+                              if i % 2 == 1 and time is not None])
 
         return movesHistory, clock1History, clock2History

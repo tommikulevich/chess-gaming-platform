@@ -1,7 +1,7 @@
 import sys
 from PySide2.QtWidgets import QApplication
 
-import data.ui.resources_qrc
+import qt_windows.resources_qrc  # noqa: F401
 from qt_windows.main_window import MainWindow
 
 

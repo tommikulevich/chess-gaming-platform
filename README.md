@@ -18,11 +18,11 @@
 
 #### Main Window
 
-<img src="data/_readme-img/1.png?raw=true" width="500" alt="Main Window">
+<img src="assets/_readme-img/1.png?raw=true" width="500" alt="Main Window">
 
 #### New Game Configuration Window
 
-<img src="data/_readme-img/2.png?raw=true" width="200" alt="Start Window">
+<img src="assets/_readme-img/2.png?raw=true" width="200" alt="Start Window">
 
 #### Game Modes
 
@@ -40,7 +40,7 @@ To make a move, **left-click and hold** the desired piece, which will then _high
 placed on a valid square, it will return to its original position. To complete the move, **click on the corresponding
 player clock**. Note that you cannot finish a move without moving the selected piece to a valid position.
 
-<img src="data/_readme-img/3.png?raw=true" width="500" alt="Move">
+<img src="assets/_readme-img/3.png?raw=true" width="500" alt="Move">
 
 #### Keyboard Control
 
@@ -56,19 +56,19 @@ In the case of en passant captures and castling, _additional squares will be hig
 king moves. When a pawn reaches the end of the chessboard, _promotion window will appear_, allowing the player to choose
 a new piece.
 
-<img src="data/_readme-img/4.png?raw=true" width="500" alt="Promotion Window">
+<img src="assets/_readme-img/4.png?raw=true" width="500" alt="Promotion Window">
 
 #### Check | Checkmate
 
 When the king is in check, _the square beneath it will be highlighted in red_. The checked king can only make moves to
 escape the threat.
 
-<img src="data/_readme-img/5.png?raw=true" width="500" alt="Check">
+<img src="assets/_readme-img/5.png?raw=true" width="500" alt="Check">
 
 If checkmate occurs, _game over message will be displayed_, the clocks will be stopped, and
 further moves will be disabled.
 
-<img src="data/_readme-img/6.png?raw=true" width="200" alt="Checkmate">
+<img src="assets/_readme-img/6.png?raw=true" width="200" alt="Checkmate">
 
 ### 🕹 Additional Features
 
@@ -78,7 +78,7 @@ Players have option to **change the textures of the chessboard and pieces** by r
 change their piece color to the same as their opponent have - an appropriate message will be displayed. **Note**:
 Texture changes will be reset upon selecting "Game → Start new game."
 
-<img src="data/_readme-img/7.png?raw=true" width="500" alt="Textures">
+<img src="assets/_readme-img/7.png?raw=true" width="500" alt="Textures">
 
 #### Write and load configurations to/from JSON
 
@@ -120,4 +120,4 @@ During gameplay, players can **save the game history**, including move completio
 database. In the "New Game" window, players have the option to **load** the game history and initiate **playback**, 
 either by manually advancing through moves or enabling auto playback to watch the game progress.
 
-<img src="data/_readme-img/8.png?raw=true" width="500" alt="Playback">
+<img src="assets/_readme-img/8.png?raw=true" width="500" alt="Playback">

@@ -1,10 +1,12 @@
 import sys
-from PySide2.QtCore import QObject, QDataStream, QThread
-from PySide2.QtNetwork import QTcpServer, QHostAddress
+from typing import Optional, Any, List
+
+from PySide2.QtCore import (QObject, QDataStream, QThread)
+from PySide2.QtNetwork import (QTcpServer, QHostAddress)
 
 
 class ChessServer(QObject):
-    def __init__(self, ip, port, parent=None):
+    def __init__(self, ip: str, port: int, parent: Any = None) -> None:
         super().__init__(parent)
         self.mainWindow = parent
 
@@ -18,13 +20,13 @@ class ChessServer(QObject):
             print("Server could not start...")
             sys.exit(1)
         else:
-            print(f"Server running on ip:port: {self.ip.toString()}:{self.port}.")
+            print(f"Server running on {self.ip.toString()}:{self.port}.")
 
         # Players (clients) info
-        self.playerSocket = [None, None]
-        self.playerNick = [None, None]
+        self.playerSocket: List[Optional[QTcpServer]] = [None, None]
+        self.playerNick: List[Optional[str]] = [None, None]
 
-    def newConnection(self):
+    def newConnection(self) -> None:
         if None not in self.playerSocket:
             print("There are already two players! Rejecting connection...")
             newSocket = self.server.nextPendingConnection()
@@ -38,8 +40,10 @@ class ChessServer(QObject):
 
         # Initialize new socket
         newSocket = self.server.nextPendingConnection()
-        newSocket.readyRead.connect(lambda: self.receiveData(playerInd))
-        newSocket.disconnected.connect(lambda: self.playerDisconnected(playerInd))
+        newSocket.readyRead.connect(
+            lambda: self.receiveData(playerInd))
+        newSocket.disconnected.connect(
+            lambda: self.playerDisconnected(playerInd))
 
         # Refresh info about players (sockets and nicknames)
         self.playerSocket[playerInd] = newSocket
@@ -53,14 +57,14 @@ class ChessServer(QObject):
             self.sendData(playerInd, "start")
             self.sendData(1 - playerInd, "start")
 
-    def playerDisconnected(self, playerInd):
+    def playerDisconnected(self, playerInd: int) -> None:
         print(f"Player ({self.playerNick[playerInd]}) is disconnected...")
 
         self.playerSocket[playerInd].deleteLater()
         self.playerSocket[playerInd] = None
         self.playerNick[playerInd] = None
 
-    def receiveData(self, playerInd):
+    def receiveData(self, playerInd: int) -> None:
         socket = self.playerSocket[playerInd]
         stream = QDataStream(socket)
         stream.setVersion(QDataStream.Qt_5_0)
@@ -71,7 +75,7 @@ class ChessServer(QObject):
             otherPlayerInd = 1 - playerInd
             self.sendData(otherPlayerInd, data)
 
-    def sendData(self, playerInd, data):
+    def sendData(self, playerInd: int, data: str) -> None:
         socket = self.playerSocket[playerInd]
         if socket is not None:
             stream = QDataStream(socket)
@@ -80,12 +84,11 @@ class ChessServer(QObject):
 
 
 class ServerThread(QThread):
-    def __init__(self, ip, port, parent=None):
-        super().__init__(parent)
+    def __init__(self, ip: str, port: int, parent: Any = None) -> None:
         self.server = None
         self.mainWindow = parent
         self.ip, self.port = ip, port
 
-    def run(self):
+    def run(self) -> None:
         self.server = ChessServer(self.ip, self.port, self.mainWindow)
         self.exec_()
